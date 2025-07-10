@@ -4,6 +4,8 @@ export interface ITrip extends Document {
   userId: string;
   from: string;
   to: string;
+  fromCoords?: { lat: number; lng: number; };
+  toCoords?: { lat: number; lng: number; };
   departureDate: Date;
   arrivalDate: Date;
   capacity: number;
@@ -17,6 +19,14 @@ const TripSchema: Schema = new Schema({
   userId: { type: String, required: true },
   from: { type: String, required: true },
   to: { type: String, required: true },
+  fromCoords: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  toCoords: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
   departureDate: { type: Date, required: true },
   arrivalDate: { type: Date, required: true },
   capacity: { type: Number, required: true },

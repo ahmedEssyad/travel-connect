@@ -9,6 +9,7 @@ import { useData } from '@/contexts/DataContext';
 import { useSocket } from '@/lib/websocket';
 import { apiClient } from '@/lib/api-client';
 import { Trip, Request, Match } from '@/types';
+import { calculateDistance, analyzeRoute, calculateGeographicScore, geocodeLocation, getProximityDescription } from '@/lib/geographic';
 
 export default function MatchesPage() {
   const router = useRouter();
@@ -109,7 +110,7 @@ export default function MatchesPage() {
     return 0;
   }, []);
 
-  // Enhanced compatibility calculation with better location matching
+  // Enhanced compatibility calculation with geographic proximity
   const calculateCompatibility = useCallback((trip: Trip, request: Request) => {
     // Item type compatibility (essential requirement)
     if (!trip.allowedItems.includes(request.itemType)) {
@@ -123,45 +124,56 @@ export default function MatchesPage() {
     
     let score = 0;
     
-    // Enhanced location matching
-    const fromCompatibility = getLocationCompatibility(trip.from, request.from);
-    const toCompatibility = getLocationCompatibility(trip.to, request.to);
-    
-    // Location scoring (more flexible)
-    score += Math.round(fromCompatibility * 0.4); // 40% weight for origin
-    score += Math.round(toCompatibility * 0.4);   // 40% weight for destination
-    
-    // If no location compatibility at all, still allow some matches for same country/region
-    if (score === 0) {
-      // Check if at least one location pair has some similarity
-      const hasAnySimilarity = fromCompatibility > 0 || toCompatibility > 0;
-      if (!hasAnySimilarity) {
-        return 0;
+    // Geographic scoring (if coordinates are available)
+    if (trip.fromCoords && trip.toCoords && request.fromCoords && request.toCoords) {
+      const routeAnalysis = analyzeRoute(
+        trip.fromCoords,
+        trip.toCoords,
+        request.fromCoords,
+        request.toCoords
+      );
+      
+      const geographicScore = calculateGeographicScore(routeAnalysis);
+      score += Math.round(geographicScore * 0.6); // 60% weight for geography
+      
+      // Bonus for being on route
+      if (routeAnalysis.isOnRoute) {
+        score += 10;
       }
-      // Give minimum score for having some location overlap
-      score = 10;
+    } else {
+      // Fallback to text-based location matching
+      const fromCompatibility = getLocationCompatibility(trip.from, request.from);
+      const toCompatibility = getLocationCompatibility(trip.to, request.to);
+      
+      score += Math.round(fromCompatibility * 0.3); // 30% weight for origin
+      score += Math.round(toCompatibility * 0.3);   // 30% weight for destination
     }
     
-    // Date compatibility scoring
+    // Date compatibility scoring (20% weight)
     const timeDiff = Math.abs(trip.departureDate.getTime() - request.deadline.getTime());
     const daysDiff = timeDiff / (1000 * 3600 * 24);
     
     let dateScore = 0;
-    if (daysDiff <= 1) dateScore = 15; // Same day or next day
-    else if (daysDiff <= 3) dateScore = 12; // Within 3 days
-    else if (daysDiff <= 7) dateScore = 10; // Within a week
+    if (daysDiff <= 1) dateScore = 20; // Same day or next day
+    else if (daysDiff <= 3) dateScore = 15; // Within 3 days
+    else if (daysDiff <= 7) dateScore = 12; // Within a week
     else if (daysDiff <= 14) dateScore = 8; // Within 2 weeks
     else if (daysDiff <= 30) dateScore = 5; // Within a month
     else dateScore = 2; // More than a month but still valid
     
     score += dateScore;
     
-    // Item type bonus (already verified above)
+    // Item type and logistics bonus (10% weight)
     score += 10;
     
     // Reward incentive (small bonus)
     if (request.reward && request.reward.trim()) {
-      score += 3;
+      score += 5;
+    }
+    
+    // Ensure minimum score for valid matches
+    if (score < 15 && trip.allowedItems.includes(request.itemType) && trip.departureDate <= request.deadline) {
+      score = 15; // Minimum viable match
     }
     
     const finalScore = Math.min(score, 100);

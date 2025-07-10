@@ -4,6 +4,8 @@ export interface IRequest extends Document {
   userId: string;
   from: string;
   to: string;
+  fromCoords?: { lat: number; lng: number; };
+  toCoords?: { lat: number; lng: number; };
   deadline: Date;
   itemType: string;
   description?: string;
@@ -17,6 +19,14 @@ const RequestSchema: Schema = new Schema({
   userId: { type: String, required: true },
   from: { type: String, required: true },
   to: { type: String, required: true },
+  fromCoords: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  toCoords: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
   deadline: { type: Date, required: true },
   itemType: { type: String, required: true },
   description: { type: String },
