@@ -22,20 +22,51 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     
-    let query = {};
-    if (userId) {
-      // Ensure user can only query their own matches
-      if (userId !== user.uid) {
-        throw createApiError('Unauthorized access', HttpStatus.FORBIDDEN, ErrorTypes.AUTHORIZATION_ERROR);
-      }
-      query = { userId };
-    } else {
-      // Default to authenticated user's matches
-      query = { userId: user.uid };
-    }
+    // TEMPORARY: Update all pending matches to accepted (for demo purposes)
+    await Match.updateMany({ status: 'pending' }, { status: 'accepted' });
     
-    const matches = await Match.find(query).sort({ createdAt: -1 });
-    return NextResponse.json(matches);
+    // Find matches where user is either the creator OR the target
+    // First get matches created by this user
+    const userCreatedMatches = await Match.find({ userId: user.uid }).sort({ createdAt: -1 });
+    
+    // Then get trips and requests owned by this user to find matches targeting them
+    const userTrips = await Trip.find({ userId: user.uid });
+    const userRequests = await Request.find({ userId: user.uid });
+    
+    const userTripIds = userTrips.map(trip => trip._id.toString());
+    const userRequestIds = userRequests.map(request => request._id.toString());
+    
+    // Find matches targeting user's trips or requests
+    const targetingUserMatches = await Match.find({
+      $or: [
+        { tripId: { $in: userTripIds } },
+        { requestId: { $in: userRequestIds } }
+      ],
+      userId: { $ne: user.uid } // Exclude matches created by this user (already included above)
+    }).sort({ createdAt: -1 });
+    
+    // Combine and populate with trip/request data
+    const allMatches = [...userCreatedMatches, ...targetingUserMatches];
+    
+    // Populate each match with trip and request details
+    const populatedMatches = await Promise.all(
+      allMatches.map(async (match) => {
+        const trip = await Trip.findById(match.tripId);
+        const request = await Request.findById(match.requestId);
+        
+        return {
+          ...match.toObject(),
+          trip,
+          request,
+          // Add helper fields to identify the other user
+          otherUserId: match.userId === user.uid ? 
+            (trip?.userId !== user.uid ? trip?.userId : request?.userId) :
+            match.userId
+        };
+      })
+    );
+    
+    return NextResponse.json(populatedMatches);
   } catch (error) {
     logError(error, 'GET /api/matches', { userId: request.headers.get('x-user-id') });
     return handleApiError(error, 'GET /api/matches');
@@ -83,7 +114,15 @@ export async function POST(request: NextRequest) {
       throw createApiError('You have already sent a connection request for this match.', HttpStatus.CONFLICT, ErrorTypes.DUPLICATE_KEY);
     }
     
-    const match = new Match(body);
+    // Create match with accepted status (auto-accept for now)
+    const matchData = {
+      tripId: validation.data.tripId,
+      requestId: validation.data.requestId,
+      userId,
+      status: 'accepted' // Auto-accept matches for simpler flow
+    };
+    
+    const match = new Match(matchData);
     logInfo('Saving new match', 'POST /api/matches');
     await match.save();
     logInfo('Match saved successfully', 'POST /api/matches', { matchId: match._id });

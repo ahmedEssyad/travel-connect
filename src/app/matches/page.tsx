@@ -727,7 +727,20 @@ export default function MatchesPage() {
                           <p className="text-sm text-slate-600">
                             Connected on {match.createdAt.toLocaleDateString()}
                           </p>
-                          <button className="mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium">
+                          <button 
+                            onClick={() => {
+                              // Get the other user ID from the match
+                              const otherUserId = match.userId === user.uid ? 
+                                (trips.find(t => t.id === match.tripId)?.userId || requests.find(r => r.id === match.requestId)?.userId) :
+                                match.userId;
+                              
+                              if (otherUserId) {
+                                const chatId = [user.uid, otherUserId].sort().join('_');
+                                router.push(`/messages?chat=${chatId}`);
+                              }
+                            }}
+                            className="mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium"
+                          >
                             💬 Open Conversation →
                           </button>
                         </div>

@@ -67,12 +67,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (matchesResponse.ok) {
         const matchesData = await matchesResponse.json();
-        const userMatches = matchesData.filter((match: any) => match.userId === user.uid).map((match: any) => ({
+        const userMatches = matchesData.map((match: any) => ({
           ...match,
           id: match._id,
           createdAt: new Date(match.createdAt),
         }));
         setMatches(userMatches);
+        console.log('User matches loaded:', userMatches);
       }
     } catch (error) {
       console.error('Error fetching data:', error);

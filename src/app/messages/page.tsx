@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useSocket } from '@/lib/websocket';
 import { apiClient } from '@/lib/api-client';
 
@@ -10,32 +11,93 @@ export default function MessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
-  const { socket, connected } = useSocket();
-  const [chats] = useState<any[]>([]); // Simplified for now
+  const { socket, connected, error } = useSocket();
+  const [chats, setChats] = useState<any[]>([]);
+  const { matches } = useData();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
+  // Load active chats from matches
+  useEffect(() => {
+    if (user && matches.length > 0) {
+      console.log('Processing matches for chats:', matches);
+      
+      const activeChats = matches
+        .filter(match => match.status === 'accepted')
+        .map((match, index) => {
+          console.log('Processing match:', match);
+          
+          // Use the otherUserId field from the API response
+          const otherUserId = match.otherUserId;
+          
+          if (otherUserId && otherUserId !== user.uid) {
+            const chatId = [user.uid, otherUserId].sort().join('_');
+            
+            // Get trip and request details for display
+            const tripInfo = match.trip ? `${match.trip.from} → ${match.trip.to}` : 'Trip';
+            const requestInfo = match.request ? `${match.request.from} → ${match.request.to}` : 'Request';
+            
+            return {
+              id: `${chatId}_${match.id}`, // Use match ID to ensure uniqueness
+              chatId: chatId, // Keep original chat ID for API calls
+              matchId: match.id,
+              otherUserId,
+              lastActivity: match.createdAt,
+              status: match.status,
+              tripInfo,
+              requestInfo
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+      
+      // Remove duplicates by chatId (keep the most recent)
+      const uniqueChats = activeChats.reduce((acc, chat) => {
+        const existing = acc.find(c => c.chatId === chat.chatId);
+        if (!existing || new Date(chat.lastActivity) > new Date(existing.lastActivity)) {
+          return acc.filter(c => c.chatId !== chat.chatId).concat(chat);
+        }
+        return acc;
+      }, [] as any[]);
+      
+      setChats(uniqueChats);
+      console.log('Active chats loaded:', uniqueChats);
+    }
+  }, [user, matches]);
+
   // Handle chat parameter from URL
   useEffect(() => {
     const chatParam = searchParams.get('chat');
     if (chatParam && user) {
+      console.log('Setting selected chat from URL:', chatParam);
       setSelectedChat(chatParam);
       loadMessages(chatParam);
     }
   }, [searchParams, user]);
 
   const loadMessages = async (chatId: string) => {
-    if (!user) return;
+    if (!user) {
+      console.log('Cannot load messages: no user');
+      return;
+    }
     
+    console.log('Loading messages for chat:', chatId);
     setLoadingMessages(true);
     try {
       const response = await apiClient.get(`/api/messages?chatId=${chatId}`);
+      console.log('Messages API response status:', response.status);
+      
       if (response.ok) {
         const messagesData = await response.json();
+        console.log('Loaded messages:', messagesData);
         setMessages(messagesData);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to load messages:', response.status, errorText);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -46,7 +108,15 @@ export default function MessagesPage() {
 
   // Join user room for notifications
   useEffect(() => {
+    console.log('Join effect triggered:', { 
+      hasSocket: !!socket, 
+      hasUser: !!user, 
+      connected, 
+      userId: user?.uid 
+    });
+    
     if (socket && user && connected) {
+      console.log('Attempting to join room for user:', user.uid);
       socket.emit('join', user.uid);
     }
   }, [socket, user, connected]);
@@ -144,14 +214,46 @@ export default function MessagesPage() {
               </div>
               <h1 className="text-xl font-semibold text-slate-900">Messages</h1>
             </div>
-            {connected && (
-              <span className="ml-auto text-sm text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full font-medium">● Connected</span>
-            )}
+            <div className="ml-auto">
+              {connected ? (
+                <span className="text-sm text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full font-medium">● Connected</span>
+              ) : error ? (
+                <span className="text-sm text-red-600 bg-red-50 px-2 py-1 rounded-full font-medium">● Error</span>
+              ) : (
+                <span className="text-sm text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full font-medium">● Connecting...</span>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-red-600">⚠️</span>
+              <div>
+                <h3 className="text-red-800 font-medium">Connection Error</h3>
+                <p className="text-red-700 text-sm">{error}</p>
+                <p className="text-red-600 text-xs mt-1">Make sure the WebSocket server is running on port 3001</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Debug info */}
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-yellow-800 font-medium mb-2">🐛 Debug Info</h3>
+          <div className="text-sm text-yellow-700 space-y-1">
+            <p>• Total matches: {matches.length}</p>
+            <p>• Accepted matches: {matches.filter(m => m.status === 'accepted').length}</p>
+            <p>• Active chats: {chats.length}</p>
+            <p>• Selected chat: {selectedChat || 'none'}</p>
+            <p>• Messages loaded: {messages.length}</p>
+            <p>• WebSocket: {connected ? '✅ Connected' : '❌ Disconnected'}</p>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px]">
           {/* Chat List */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -162,13 +264,46 @@ export default function MessagesPage() {
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {selectedChat ? (
+              {chats.length > 0 ? (
+                <div className="space-y-1">
+                  {chats.map((chat) => (
+                    <div
+                      key={chat.id}
+                      onClick={() => {
+                        setSelectedChat(chat.chatId);
+                        loadMessages(chat.chatId);
+                      }}
+                      className={`p-3 cursor-pointer hover:bg-slate-50 border-l-4 transition-colors ${
+                        selectedChat === chat.chatId
+                          ? 'bg-blue-50 border-blue-500'
+                          : 'border-transparent'
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-slate-900">
+                        Travel Connection
+                      </div>
+                      <div className="text-xs text-slate-600 mt-1">
+                        Trip: {chat.tripInfo}
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        Request: {chat.requestInfo}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        Connected: {new Date(chat.lastActivity).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : selectedChat ? (
                 <div className="p-3 bg-blue-50 border-l-4 border-blue-500">
                   <div className="text-sm font-medium text-blue-900">
                     Active Chat
                   </div>
                   <div className="text-xs text-blue-700 mt-1">
                     Chat ID: {selectedChat}
+                  </div>
+                  <div className="text-xs text-green-600 mt-1">
+                    {messages.length} messages loaded
                   </div>
                 </div>
               ) : (
