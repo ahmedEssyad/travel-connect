@@ -2,12 +2,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
 const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
+  apiKey: "AIzaSyCLuOc1oE2yq2wZbPmg-O5Ej7aBWtGrbsk",
+  authDomain: "vegli-10458.firebaseapp.com",
+  projectId: "vegli-10458",
+  storageBucket: "vegli-10458.firebasestorage.app",
+  messagingSenderId: "630168987440",
+  appId: "1:630168987440:web:4169c96c4fcb20726a4af5"
 };
 
 firebase.initializeApp(firebaseConfig);

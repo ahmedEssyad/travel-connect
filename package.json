@@ -6,19 +6,29 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "ws": "node server.js",
+    "dev:full": "concurrently \"npm run ws\" \"npm run dev\""
   },
   "dependencies": {
+    "concurrently": "^9.2.0",
+    "critters": "^0.0.23",
     "firebase": "^11.10.0",
+    "mongoose": "^8.16.2",
     "next": "15.3.5",
     "next-pwa": "^5.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "workbox-webpack-plugin": "^7.3.0"
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "workbox-webpack-plugin": "^7.3.0",
+    "ws": "^8.18.3",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/mongoose": "^5.11.96",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

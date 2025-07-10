@@ -9,21 +9,20 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="text-center animate-fade-in">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg mb-4 mx-auto">
+            <span className="text-white text-2xl">✈️</span>
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-slate-600 font-medium">Loading TravelConnect...</p>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <LoginForm />
-      </div>
-    );
+    return <LoginForm />;
   }
 
   return <HomePage />;
