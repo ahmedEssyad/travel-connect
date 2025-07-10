@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Request } from '@/types';
+import { ComponentLoading } from '@/components/Common/Loading';
 
 function RequestsList() {
   const router = useRouter();
@@ -36,12 +37,7 @@ function RequestsList() {
   }, [user, toast, router]);
 
   if (loading) {
-    return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p className="text-slate-600">Loading requests...</p>
-      </div>
-    );
+    return <ComponentLoading text="Chargement des demandes..." />;
   }
 
   if (requests.length === 0) {

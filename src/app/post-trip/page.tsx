@@ -16,8 +16,11 @@ export default function PostTripPage() {
   const [formData, setFormData] = useState({
     from: '',
     to: '',
+    fromCoords: undefined as { lat: number; lng: number } | undefined,
+    toCoords: undefined as { lat: number; lng: number } | undefined,
     departureDate: '',
     arrivalDate: '',
+    tripType: '',
     capacity: '',
     allowedItems: [] as string[],
     description: '',
@@ -50,8 +53,13 @@ export default function PostTripPage() {
     if (!user) return;
 
     // Validation
-    if (!formData.from || !formData.to || !formData.departureDate || !formData.arrivalDate || !formData.capacity || formData.allowedItems.length === 0) {
-      toast.error('Please fill in all required fields and select at least one allowed item type.');
+    if (!formData.from || !formData.to || !formData.departureDate || !formData.arrivalDate || !formData.tripType || !formData.capacity) {
+      toast.error('Veuillez remplir tous les champs obligatoires y compris le type de voyage.');
+      return;
+    }
+    
+    if (formData.tripType === 'delivery_service' && formData.allowedItems.length === 0) {
+      toast.error('Veuillez sélectionner au moins un type d\'objet accepté pour le service de livraison.');
       return;
     }
 
@@ -72,6 +80,9 @@ export default function PostTripPage() {
         capacity: parseInt(formData.capacity),
         departureDate: new Date(formData.departureDate),
         arrivalDate: new Date(formData.arrivalDate),
+        fromCoords: formData.fromCoords,
+        toCoords: formData.toCoords,
+        tripType: formData.tripType,
       });
       
       if (response.ok) {
@@ -136,7 +147,7 @@ export default function PostTripPage() {
             <LocationSelector
               label="From"
               value={formData.from}
-              onChange={(location) => setFormData(prev => ({ ...prev, from: location }))}
+              onChange={(location, coordinates) => setFormData(prev => ({ ...prev, from: location, fromCoords: coordinates }))}
               placeholder="Select departure location"
               required
               showExactLocation={true}
@@ -145,7 +156,7 @@ export default function PostTripPage() {
             <LocationSelector
               label="To"
               value={formData.to}
-              onChange={(location) => setFormData(prev => ({ ...prev, to: location }))}
+              onChange={(location, coordinates) => setFormData(prev => ({ ...prev, to: location, toCoords: coordinates }))}
               placeholder="Select destination"
               required
               showExactLocation={true}
@@ -183,8 +194,45 @@ export default function PostTripPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-3">
+              🚗 Type de voyage *
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { 
+                  value: 'car_sharing', 
+                  title: '🚗 Partage de voiture', 
+                  description: 'J\'ai une voiture et je cherche des compagnons de route' 
+                },
+                { 
+                  value: 'delivery_service', 
+                  title: '📦 Service de livraison', 
+                  description: 'Je propose de livrer des colis contre rémunération' 
+                }
+              ].map((type) => (
+                <label key={type.value} className={`cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 ${
+                  formData.tripType === type.value 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                }`}>
+                  <input
+                    type="radio"
+                    name="tripType"
+                    value={type.value}
+                    checked={formData.tripType === type.value}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tripType: e.target.value }))}
+                    className="sr-only"
+                  />
+                  <div className="text-lg font-semibold mb-1">{type.title}</div>
+                  <div className="text-sm text-slate-600">{type.description}</div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <label htmlFor="capacity" className="block text-sm font-semibold text-slate-700 mb-2">
-              🎽 Carry Capacity (kg)
+              {formData.tripType === 'car_sharing' ? '👥 Nombre de places disponibles' : '🎽 Capacité de transport (kg)'}
             </label>
             <input
               type="number"
@@ -193,15 +241,16 @@ export default function PostTripPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
               required
               min="1"
-              max="50"
+              max={formData.tripType === 'car_sharing' ? "8" : "50"}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-400"
-              placeholder="e.g., 5"
+              placeholder={formData.tripType === 'car_sharing' ? 'ex: 3 personnes' : 'ex: 5 kg'}
             />
           </div>
 
+          {formData.tripType === 'delivery_service' && (
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-3">
-              📦 Allowed Items (select all that apply)
+              📦 Types d'objets acceptés (sélectionner tous qui s'appliquent)
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {itemOptions.map((item) => (
@@ -221,10 +270,11 @@ export default function PostTripPage() {
               ))}
             </div>
           </div>
+          )}
 
           <div>
             <label htmlFor="description" className="block text-sm font-semibold text-slate-700 mb-2">
-              📝 Additional Details (optional)
+              📝 Détails supplémentaires (optionnel)
             </label>
             <textarea
               id="description"
@@ -232,24 +282,26 @@ export default function PostTripPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={4}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-400 resize-none"
-              placeholder="Any special requirements, pickup/delivery details, etc."
+              placeholder={formData.tripType === 'car_sharing' 
+                ? 'Conditions du voyage, coût du partage d\'essence, préférences de compagnons, etc.' 
+                : 'Exigences spéciales, détails de collecte/livraison, etc.'}
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading || formData.allowedItems.length === 0}
+            disabled={loading || (formData.tripType === 'delivery_service' && formData.allowedItems.length === 0)}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
           >
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Posting Trip...</span>
+                <span>Publication...</span>
               </>
             ) : (
               <>
-                <span>✈️</span>
-                <span>Post Trip</span>
+                <span>{formData.tripType === 'car_sharing' ? '🚗' : '📦'}</span>
+                <span>{formData.tripType === 'car_sharing' ? 'Publier le voyage' : 'Publier le service'}</span>
               </>
             )}
           </button>

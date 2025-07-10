@@ -8,6 +8,7 @@ export interface ITrip extends Document {
   toCoords?: { lat: number; lng: number; };
   departureDate: Date;
   arrivalDate: Date;
+  tripType: string;
   capacity: number;
   allowedItems: string[];
   description?: string;
@@ -29,6 +30,7 @@ const TripSchema: Schema = new Schema({
   },
   departureDate: { type: Date, required: true },
   arrivalDate: { type: Date, required: true },
+  tripType: { type: String, required: true, enum: ['car_sharing', 'delivery_service'] },
   capacity: { type: Number, required: true },
   allowedItems: [{ type: String }],
   description: { type: String },

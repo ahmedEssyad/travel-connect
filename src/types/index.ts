@@ -10,12 +10,15 @@ export interface User {
 }
 
 export interface Trip {
-  id: string;
+  _id: string;
   userId: string;
   from: string;
   to: string;
+  fromCoords?: { lat: number; lng: number };
+  toCoords?: { lat: number; lng: number };
   departureDate: Date;
   arrivalDate: Date;
+  tripType: 'car_sharing' | 'delivery_service';
   capacity: number;
   allowedItems: string[];
   description?: string;
@@ -23,12 +26,15 @@ export interface Trip {
 }
 
 export interface Request {
-  id: string;
+  _id: string;
   userId: string;
   from: string;
   to: string;
+  fromCoords?: { lat: number; lng: number };
+  toCoords?: { lat: number; lng: number };
   deadline: Date;
-  itemType: string;
+  requestType: 'travel_companion' | 'delivery_request';
+  itemType?: string;
   description?: string;
   reward?: string;
   photo?: string;

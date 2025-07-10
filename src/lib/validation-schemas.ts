@@ -28,11 +28,29 @@ export const tripSchema = z.object({
 export const tripCreateSchema = z.object({
   from: z.string().min(1, 'Departure location is required').max(100, 'Location too long'),
   to: z.string().min(1, 'Destination is required').max(100, 'Location too long'),
+  fromCoords: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).optional(),
+  toCoords: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).optional(),
   departureDate: z.string(),
   arrivalDate: z.string(),
+  tripType: z.enum(['car_sharing', 'delivery_service'], { required_error: 'Trip type is required' }),
   capacity: z.number().min(1, 'Capacity must be at least 1').max(100, 'Capacity too high'),
-  allowedItems: z.array(z.string()).min(1, 'At least one item type must be selected'),
+  allowedItems: z.array(z.string()).optional(),
   description: z.string().max(1000, 'Description too long').optional(),
+}).refine((data) => {
+  // For delivery service, allowedItems is required
+  if (data.tripType === 'delivery_service' && (!data.allowedItems || data.allowedItems.length === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Allowed items are required for delivery service trips',
+  path: ['allowedItems']
 });
 
 export const tripUpdateSchema = z.object({
@@ -60,11 +78,29 @@ export const requestSchema = z.object({
 export const requestCreateSchema = z.object({
   from: z.string().min(1, 'Pickup location is required').max(100, 'Location too long'),
   to: z.string().min(1, 'Delivery location is required').max(100, 'Location too long'),
+  fromCoords: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).optional(),
+  toCoords: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).optional(),
   deadline: z.string(),
-  itemType: z.string().min(1, 'Item type is required'),
+  requestType: z.enum(['travel_companion', 'delivery_request'], { required_error: 'Request type is required' }),
+  itemType: z.string().optional(),
   description: z.string().max(1000, 'Description too long').optional(),
   reward: z.string().max(200, 'Reward description too long').optional(),
   photo: z.string().url('Invalid photo URL').optional(),
+}).refine((data) => {
+  // For delivery request, itemType is required
+  if (data.requestType === 'delivery_request' && !data.itemType) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Item type is required for delivery requests',
+  path: ['itemType']
 });
 
 export const requestUpdateSchema = z.object({

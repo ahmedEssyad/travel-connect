@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Trip } from '@/types';
+import { ComponentLoading } from '@/components/Common/Loading';
 
 function TripsList() {
   const router = useRouter();
@@ -36,12 +37,7 @@ function TripsList() {
   }, [user, toast, router]);
 
   if (loading) {
-    return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p className="text-slate-600">Loading trips...</p>
-      </div>
-    );
+    return <ComponentLoading text="Chargement des voyages..." />;
   }
 
   if (trips.length === 0) {

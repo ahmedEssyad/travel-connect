@@ -17,7 +17,10 @@ export default function PostRequestPage() {
   const [formData, setFormData] = useState({
     from: '',
     to: '',
+    fromCoords: undefined as { lat: number; lng: number } | undefined,
+    toCoords: undefined as { lat: number; lng: number } | undefined,
     deadline: '',
+    requestType: '',
     itemType: '',
     description: '',
     reward: '',
@@ -48,8 +51,13 @@ export default function PostRequestPage() {
     if (!user) return;
 
     // Validation
-    if (!formData.from || !formData.to || !formData.deadline || !formData.itemType) {
-      toast.error('Please fill in all required fields.');
+    if (!formData.from || !formData.to || !formData.deadline || !formData.requestType) {
+      toast.error('Veuillez remplir tous les champs obligatoires y compris le type de demande.');
+      return;
+    }
+    
+    if (formData.requestType === 'delivery_request' && !formData.itemType) {
+      toast.error('Veuillez spécifier le type d\'objet pour la demande de livraison.');
       return;
     }
 
@@ -66,6 +74,9 @@ export default function PostRequestPage() {
         ...formData,
         deadline: new Date(formData.deadline),
         photo: '', // TODO: Implement image upload service
+        fromCoords: formData.fromCoords,
+        toCoords: formData.toCoords,
+        requestType: formData.requestType,
       });
       
       if (response.ok) {
@@ -130,7 +141,7 @@ export default function PostRequestPage() {
             <LocationSelector
               label="From"
               value={formData.from}
-              onChange={(location) => setFormData(prev => ({ ...prev, from: location }))}
+              onChange={(location, coordinates) => setFormData(prev => ({ ...prev, from: location, fromCoords: coordinates }))}
               placeholder="Select pickup location"
               required
               showExactLocation={true}
@@ -139,17 +150,54 @@ export default function PostRequestPage() {
             <LocationSelector
               label="To"
               value={formData.to}
-              onChange={(location) => setFormData(prev => ({ ...prev, to: location }))}
+              onChange={(location, coordinates) => setFormData(prev => ({ ...prev, to: location, toCoords: coordinates }))}
               placeholder="Select delivery destination"
               required
               showExactLocation={true}
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-3">
+              🚗 Type de demande *
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { 
+                  value: 'travel_companion', 
+                  title: '🚗 Compagnon de voyage', 
+                  description: 'Je cherche quelqu\'un avec qui partager un voyage' 
+                },
+                { 
+                  value: 'delivery_request', 
+                  title: '📦 Demande de livraison', 
+                  description: 'J\'ai besoin qu\'on me livre un objet' 
+                }
+              ].map((type) => (
+                <label key={type.value} className={`cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 ${
+                  formData.requestType === type.value 
+                    ? 'border-emerald-500 bg-emerald-50' 
+                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                }`}>
+                  <input
+                    type="radio"
+                    name="requestType"
+                    value={type.value}
+                    checked={formData.requestType === type.value}
+                    onChange={(e) => setFormData(prev => ({ ...prev, requestType: e.target.value }))}
+                    className="sr-only"
+                  />
+                  <div className="text-lg font-semibold mb-1">{type.title}</div>
+                  <div className="text-sm text-slate-600">{type.description}</div>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="deadline" className="block text-sm font-semibold text-slate-700 mb-2">
-                ⏰ Deadline
+                ⏰ Date limite
               </label>
               <input
                 type="date"
@@ -161,9 +209,10 @@ export default function PostRequestPage() {
               />
             </div>
 
+            {formData.requestType === 'delivery_request' && (
             <div>
               <label htmlFor="itemType" className="block text-sm font-semibold text-slate-700 mb-2">
-                📊 Item Type
+                📊 Type d'objet
               </label>
               <select
                 id="itemType"
@@ -172,17 +221,37 @@ export default function PostRequestPage() {
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 hover:border-slate-400 text-slate-900 placeholder-slate-400"
               >
-                <option value="">Select item type</option>
+                <option value="">Sélectionner le type d'objet</option>
                 {itemTypes.map((type) => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
+            )}
+
+            {formData.requestType === 'travel_companion' && (
+            <div>
+              <label htmlFor="companions" className="block text-sm font-semibold text-slate-700 mb-2">
+                👥 Nombre de personnes
+              </label>
+              <input
+                type="number"
+                id="companions"
+                value={formData.itemType}
+                onChange={(e) => setFormData(prev => ({ ...prev, itemType: e.target.value }))}
+                required
+                min="1"
+                max="8"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 hover:border-slate-400 text-slate-900 placeholder-slate-400"
+                placeholder="ex: 2 personnes"
+              />
+            </div>
+            )}
           </div>
 
           <div>
             <label htmlFor="description" className="block text-sm font-semibold text-slate-700 mb-2">
-              📝 Item Description
+              📝 {formData.requestType === 'delivery_request' ? 'Description de l\'objet' : 'Détails du voyage'}
             </label>
             <textarea
               id="description"
@@ -190,13 +259,15 @@ export default function PostRequestPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={4}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 hover:border-slate-400 resize-none"
-              placeholder="Describe the item, size, weight, special handling requirements, etc."
+              placeholder={formData.requestType === 'delivery_request' 
+                ? 'Décrire l\'objet, taille, poids, exigences spéciales, etc.' 
+                : 'Préférences de voyage, budget partagé, horaires flexibles, etc.'}
             />
           </div>
 
           <div>
             <label htmlFor="reward" className="block text-sm font-semibold text-slate-700 mb-2">
-              💰 Reward/Compensation (optional)
+              💰 {formData.requestType === 'delivery_request' ? 'Rémunération/Compensation' : 'Contribution voyage'} (optionnel)
             </label>
             <input
               type="text"
@@ -204,13 +275,16 @@ export default function PostRequestPage() {
               value={formData.reward}
               onChange={(e) => setFormData(prev => ({ ...prev, reward: e.target.value }))}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 hover:border-slate-400"
-              placeholder="e.g., $50, dinner, or 'Thank you gift'"
+              placeholder={formData.requestType === 'delivery_request' 
+                ? 'ex: 50€, dîner, ou cadeau de remerciement' 
+                : 'ex: Partage essence, péage, ou contribution'}
             />
           </div>
 
+          {formData.requestType === 'delivery_request' && (
           <div>
             <label htmlFor="photo" className="block text-sm font-semibold text-slate-700 mb-2">
-              📷 Item Photo (optional)
+              📷 Photo de l'objet (optionnel)
             </label>
             <input
               type="file"
@@ -225,6 +299,7 @@ export default function PostRequestPage() {
               </div>
             )}
           </div>
+          )}
 
           <button
             type="submit"
@@ -234,12 +309,12 @@ export default function PostRequestPage() {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Posting Request...</span>
+                <span>Publication...</span>
               </>
             ) : (
               <>
-                <span>📦</span>
-                <span>Post Request</span>
+                <span>{formData.requestType === 'travel_companion' ? '🚗' : '📦'}</span>
+                <span>{formData.requestType === 'travel_companion' ? 'Publier la demande' : 'Publier la demande'}</span>
               </>
             )}
           </button>

@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let body: any = {};
   try {
     // Verify authentication
     const { authenticated, user, error } = await requireAuth(request);
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
     
-    const body = await request.json();
+    body = await request.json();
     
     // Validate input data
     const validation = validateData(tripCreateSchema, body);

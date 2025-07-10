@@ -7,7 +7,8 @@ export interface IRequest extends Document {
   fromCoords?: { lat: number; lng: number; };
   toCoords?: { lat: number; lng: number; };
   deadline: Date;
-  itemType: string;
+  requestType: string;
+  itemType?: string;
   description?: string;
   reward?: string;
   photo?: string;
@@ -28,7 +29,8 @@ const RequestSchema: Schema = new Schema({
     lng: { type: Number }
   },
   deadline: { type: Date, required: true },
-  itemType: { type: String, required: true },
+  requestType: { type: String, required: true, enum: ['travel_companion', 'delivery_request'] },
+  itemType: { type: String },
   description: { type: String },
   reward: { type: String },
   photo: { type: String },
