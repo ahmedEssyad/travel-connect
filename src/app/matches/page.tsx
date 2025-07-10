@@ -248,6 +248,25 @@ export default function MatchesPage() {
     );
   }, [matches]);
 
+  const handleApproveMatch = useCallback(async (matchId: string, action: 'approve' | 'reject') => {
+    try {
+      const response = await apiClient.put('/api/matches', {
+        _id: matchId,
+        action
+      });
+      
+      if (response.ok) {
+        toast.success(action === 'approve' ? '✅ Match approved!' : '❌ Match rejected');
+        await fetchMatches(); // Refresh matches
+      } else {
+        throw new Error('Failed to update match');
+      }
+    } catch (error) {
+      toast.error(`Failed to ${action} match. Please try again.`);
+      console.error(`Error ${action}ing match:`, error);
+    }
+  }, [toast, fetchMatches]);
+
   const handleCreateMatch = useCallback(async (trip: Trip, request: Request) => {
     if (!user) {
       toast.error('Please log in to send connection requests.');
@@ -284,22 +303,11 @@ export default function MatchesPage() {
         const otherUserId = trip.userId === user.uid ? request.userId : trip.userId;
         const chatId = [user.uid, otherUserId].sort().join('_');
         
-        // Show different success messages based on match type
-        if (trip.userId === user.uid) {
-          // User owns the trip, someone wants them to deliver
-          toast.success('🚚 Connection established! Redirecting to messages...');
-        } else {
-          // User owns the request, they're asking someone to deliver
-          toast.success('📨 Request sent! Redirecting to messages...');
-        }
+        // Show success message for sending request
+        toast.success('📨 Connection request sent! Wait for approval.');
         
         // Refresh matches to show updated state
         await fetchMatches();
-        
-        // Redirect to messages page with the chat
-        setTimeout(() => {
-          router.push(`/messages?chat=${chatId}`);
-        }, 1500);
       } else {
         const errorData = await response.json();
         if (response.status === 409) {
@@ -485,7 +493,7 @@ export default function MatchesPage() {
                   : 'text-slate-600 hover:text-slate-800'
               }`}
             >
-              📋 My Requests
+              📋 My Connections
             </button>
             <button
               onClick={() => setActiveTab('messages')}
@@ -552,8 +560,8 @@ export default function MatchesPage() {
                         </>
                       ) : (
                         <>
-                          <span>💬</span>
-                          <span>Connect</span>
+                          <span>📤</span>
+                          <span>Send Request</span>
                         </>
                       )}
                     </button>
@@ -669,27 +677,114 @@ export default function MatchesPage() {
                 <p className="text-slate-400">Connect with potential matches to see them here</p>
               </div>
             ) : (
-              matches.map((match) => (
-                <div key={match.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow animate-slide-in">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-slate-900 mb-1">Match #{match.id.slice(-6)}</h3>
-                      <p className="text-sm text-slate-600">
-                        Status: <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
-                          match.status === 'pending' ? 'text-yellow-700 bg-yellow-100' :
-                          match.status === 'accepted' ? 'text-emerald-700 bg-emerald-100' :
-                          'text-red-700 bg-red-100'
-                        }`}>
-                          {match.status}
-                        </span>
-                      </p>
+              <div className="space-y-6">
+                {/* Pending Approvals */}
+                {matches.filter(match => match.status === 'pending' && match.userId !== user.uid).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-orange-800 mb-4 flex items-center space-x-2">
+                      <span>⏳</span>
+                      <span>Pending Your Approval</span>
+                    </h3>
+                    <div className="space-y-4">
+                      {matches
+                        .filter(match => match.status === 'pending' && match.userId !== user.uid)
+                        .map((match) => (
+                          <div key={match.id} className="bg-orange-50 border border-orange-200 rounded-xl p-6 animate-slide-in">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="font-semibold text-orange-900 mb-1">New Connection Request</h4>
+                                <p className="text-sm text-orange-700">
+                                  Someone wants to connect with your {match.trip ? 'trip' : 'request'}
+                                </p>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleApproveMatch(match.id, 'approve')}
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium flex items-center space-x-1"
+                                >
+                                  <span>✅</span>
+                                  <span>Approve</span>
+                                </button>
+                                <button
+                                  onClick={() => handleApproveMatch(match.id, 'reject')}
+                                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center space-x-1"
+                                >
+                                  <span>❌</span>
+                                  <span>Reject</span>
+                                </button>
+                              </div>
+                            </div>
+                            {match.trip && (
+                              <div className="text-sm text-orange-800 bg-orange-100 p-3 rounded-lg">
+                                <strong>Trip:</strong> {match.trip.from} → {match.trip.to} on {new Date(match.trip.departureDate).toLocaleDateString()}
+                              </div>
+                            )}
+                            {match.request && (
+                              <div className="text-sm text-orange-800 bg-orange-100 p-3 rounded-lg mt-2">
+                                <strong>Request:</strong> {match.request.from} → {match.request.to} by {new Date(match.request.deadline).toLocaleDateString()}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                     </div>
-                    <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                      {match.createdAt.toLocaleDateString()}
-                    </span>
+                  </div>
+                )}
+
+                {/* My Requests */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center space-x-2">
+                    <span>📋</span>
+                    <span>My Connection Requests</span>
+                  </h3>
+                  <div className="space-y-4">
+                    {matches.filter(match => match.userId === user.uid).length === 0 ? (
+                      <div className="text-center py-8 bg-slate-50 rounded-xl">
+                        <p className="text-slate-500">No connection requests sent yet</p>
+                      </div>
+                    ) : (
+                      matches
+                        .filter(match => match.userId === user.uid)
+                        .map((match) => (
+                          <div key={match.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow animate-slide-in">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="font-semibold text-slate-900 mb-1">Request #{match.id.slice(-6)}</h4>
+                                <p className="text-sm text-slate-600">
+                                  Status: <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
+                                    match.status === 'pending' ? 'text-yellow-700 bg-yellow-100' :
+                                    match.status === 'accepted' ? 'text-emerald-700 bg-emerald-100' :
+                                    'text-red-700 bg-red-100'
+                                  }`}>
+                                    {match.status === 'pending' ? 'Awaiting Approval' : 
+                                     match.status === 'accepted' ? 'Approved' : 'Rejected'}
+                                  </span>
+                                </p>
+                              </div>
+                              <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                                {match.createdAt.toLocaleDateString()}
+                              </span>
+                            </div>
+                            {match.status === 'accepted' && (
+                              <button
+                                onClick={() => {
+                                  const otherUserId = match.otherUserId;
+                                  if (otherUserId) {
+                                    const chatId = [user.uid, otherUserId].sort().join('_');
+                                    router.push(`/messages?chat=${chatId}`);
+                                  }
+                                }}
+                                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                              >
+                                <span>💬</span>
+                                <span>Open Chat</span>
+                              </button>
+                            )}
+                          </div>
+                        ))
+                    )}
                   </div>
                 </div>
-              ))
+              </div>
             )}
           </div>
         )}

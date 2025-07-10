@@ -22,8 +22,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     
-    // TEMPORARY: Update all pending matches to accepted (for demo purposes)
-    await Match.updateMany({ status: 'pending' }, { status: 'accepted' });
+    // No longer auto-accepting matches - proper approval flow
     
     // Find matches where user is either the creator OR the target
     // First get matches created by this user
@@ -114,12 +113,12 @@ export async function POST(request: NextRequest) {
       throw createApiError('You have already sent a connection request for this match.', HttpStatus.CONFLICT, ErrorTypes.DUPLICATE_KEY);
     }
     
-    // Create match with accepted status (auto-accept for now)
+    // Create match with pending status - requires approval
     const matchData = {
       tripId: validation.data.tripId,
       requestId: validation.data.requestId,
       userId,
-      status: 'accepted' // Auto-accept matches for simpler flow
+      status: 'pending' // Requires approval from target user
     };
     
     const match = new Match(matchData);
@@ -187,13 +186,44 @@ export async function PUT(request: NextRequest) {
     await connectDB();
     
     const body = await request.json();
-    const { _id, ...updateData } = body;
+    const { _id, action, ...updateData } = body;
     
     if (!_id) {
       throw createApiError('Match ID is required', HttpStatus.BAD_REQUEST, ErrorTypes.VALIDATION_ERROR);
     }
     
-    // Ensure user can only update their own matches
+    // Handle match approval/rejection
+    if (action === 'approve' || action === 'reject') {
+      // Find the match and verify user has permission to approve/reject
+      const match = await Match.findById(_id);
+      if (!match) {
+        throw createApiError('Match not found', HttpStatus.NOT_FOUND, ErrorTypes.NOT_FOUND);
+      }
+      
+      // Get trip and request to determine who can approve
+      const trip = await Trip.findById(match.tripId);
+      const request = await Request.findById(match.requestId);
+      
+      // User can approve if they own the trip or request being matched to
+      const canApprove = (trip?.userId === user.uid && match.userId !== user.uid) || 
+                        (request?.userId === user.uid && match.userId !== user.uid);
+      
+      if (!canApprove) {
+        throw createApiError('Unauthorized to approve this match', HttpStatus.FORBIDDEN, ErrorTypes.AUTHORIZATION_ERROR);
+      }
+      
+      const newStatus = action === 'approve' ? 'accepted' : 'cancelled';
+      const updatedMatch = await Match.findByIdAndUpdate(
+        _id,
+        { status: newStatus },
+        { new: true }
+      );
+      
+      logInfo(`Match ${action}d`, 'PUT /api/matches', { matchId: _id, newStatus });
+      return NextResponse.json(updatedMatch);
+    }
+    
+    // Regular update - ensure user can only update their own matches
     const match = await Match.findOneAndUpdate(
       { _id, userId: user.uid },
       updateData,
