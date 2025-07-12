@@ -1,190 +1,313 @@
 'use client';
 
-import { useState, useCallback, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import Navigation from './Navigation';
-import TripsList from './TripsList';
-import RequestsList from './RequestsList';
+import { useLocation } from '@/contexts/LocationContext';
+import { useBloodNotifications } from '@/hooks/useBloodNotifications';
 import Link from 'next/link';
+import MobileHeader from '@/components/Layout/MobileHeader';
+import LocationStatus from '@/components/Common/LocationStatus';
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<'trips' | 'requests'>('trips');
   const { user, logout } = useAuth();
+  const { location } = useLocation();
+  const { activeRequests } = useBloodNotifications();
+  const [stats, setStats] = useState({
+    totalDonors: 0,
+    activeRequests: 0,
+    successfulMatches: 0
+  });
+
+  useEffect(() => {
+    // Mock stats for now - in production, fetch from API
+    setStats({
+      totalDonors: 1247,
+      activeRequests: activeRequests.length,
+      successfulMatches: 89
+    });
+  }, [activeRequests]);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Modern Header */}
-      <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                <img 
-                  src="/logo.png" 
-                  alt="6vgli" 
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling.style.display = 'block';
-                  }}
-                />
-                <span className="text-white text-lg hidden">6v</span>
-              </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent hidden sm:block">
-                6vgli
-              </h1>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent sm:hidden">
-                6v
-              </h1>
-            </div>
-
-            {/* User Menu */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="hidden sm:flex items-center space-x-3">
-                <div className="w-9 h-9 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-full flex items-center justify-center">
-                  <span className="text-blue-700 text-sm font-semibold">
-                    {user?.name?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-sm text-slate-700 font-medium hidden md:block">
-                  {user?.name}
-                </span>
-              </div>
-              <button
-                onClick={logout}
-                className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-all duration-200 font-medium"
-              >
-                Logout
-              </button>
-            </div>
+    <div style={{ background: 'var(--surface)', minHeight: '100vh' }}>
+      {/* Mobile-Optimized Header */}
+      <MobileHeader
+        title="BloodConnect"
+        subtitle={user?.name ? `Welcome, ${user.name.split(' ')[0]}` : undefined}
+        showBack={false}
+        rightAction={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Link 
+              href="/profile" 
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
+            >
+              Profile
+            </Link>
+            <button 
+              onClick={logout} 
+              className="btn btn-outline"
+              style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
+            >
+              Logout
+            </button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-600/10"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative">
-          <div className="text-center animate-slide-in">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 drop-shadow-sm">
-              Welcome back, {user?.name?.split(' ')[0]}! 👋
+      <section style={{ 
+        background: 'linear-gradient(135deg, var(--danger) 0%, #B91C1C 100%)',
+        color: 'white',
+        padding: '3rem 0'
+      }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+            <h2 style={{ 
+              fontSize: '2.25rem', 
+              fontWeight: '700', 
+              marginBottom: '1rem',
+              lineHeight: '1.2'
+            }}>
+              Save Lives. Share Blood.
             </h2>
-            <p className="text-blue-100 text-sm sm:text-base lg:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto drop-shadow-sm">
-              Connect with travelers worldwide to send and receive items safely and affordably
+            <p style={{ 
+              fontSize: '1.125rem', 
+              opacity: '0.9', 
+              marginBottom: '2rem',
+              lineHeight: '1.6'
+            }}>
+              Emergency blood request matching system - connecting donors with patients in need
             </p>
             
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto">
+            {/* Action Buttons */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '1rem',
+              maxWidth: '400px',
+              margin: '0 auto'
+            }}>
               <Link 
-                href="/post-trip"
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 sm:p-6 hover:bg-white/20 hover:scale-105 transition-all duration-200 group shadow-lg"
+                href="/request-blood"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  textDecoration: 'none',
+                  color: 'white',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+                className="card"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
               >
-                <div className="text-2xl sm:text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">✈️</div>
-                <div className="text-sm sm:text-base font-semibold">Post Trip</div>
-                <div className="text-xs sm:text-sm text-blue-100 mt-1">Going somewhere?</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  🚨 Emergency Request
+                </div>
+                <div style={{ fontSize: '0.875rem', opacity: '0.8' }}>
+                  Need blood urgently?
+                </div>
               </Link>
               
               <Link 
-                href="/post-request"
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 sm:p-6 hover:bg-white/20 hover:scale-105 transition-all duration-200 group shadow-lg"
+                href="/blood-requests"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  textDecoration: 'none',
+                  color: 'white',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+                className="card"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
               >
-                <div className="text-2xl sm:text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">📦</div>
-                <div className="text-sm sm:text-base font-semibold">Request Delivery</div>
-                <div className="text-xs sm:text-sm text-blue-100 mt-1">Need something sent?</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  🩸 Donate Blood
+                </div>
+                <div style={{ fontSize: '0.875rem', opacity: '0.8' }}>
+                  Help save lives
+                </div>
               </Link>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Stats Section */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="space-y-2 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-              <div className="text-2xl sm:text-3xl">🌍</div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-900">Global</div>
-              <div className="text-xs text-slate-500 hidden sm:block">Worldwide Network</div>
+      <section style={{ padding: '2rem 1rem', background: 'white' }}>
+        <div className="container">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--danger)', marginBottom: '0.5rem' }}>
+                {stats.totalDonors.toLocaleString()}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Registered Donors
+              </div>
             </div>
-            <div className="space-y-2 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-              <div className="text-2xl sm:text-3xl">🔒</div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-900">Secure</div>
-              <div className="text-xs text-slate-500 hidden sm:block">Trusted Platform</div>
+            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--warning)', marginBottom: '0.5rem' }}>
+                {stats.activeRequests}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Active Requests
+              </div>
             </div>
-            <div className="space-y-2 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-              <div className="text-2xl sm:text-3xl">💰</div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-900">Free</div>
-              <div className="text-xs text-slate-500 hidden sm:block">No Hidden Fees</div>
+            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.5rem' }}>
+                {stats.successfulMatches}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Lives Saved
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Tab Navigation */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-0">
-              Explore Opportunities
-            </h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs sm:text-sm text-slate-500">View:</span>
-              <div className="flex bg-slate-100 rounded-lg p-1">
-                <button
-                  onClick={() => setActiveTab('trips')}
-                  className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 ${
-                    activeTab === 'trips'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-800'
-                  }`}
+      {/* Emergency Notifications */}
+      {activeRequests.length > 0 && (
+        <section style={{ padding: '2rem 1rem', background: 'rgba(220, 38, 38, 0.05)' }}>
+          <div className="container">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ fontSize: '1.5rem' }}>🚨</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--danger)' }}>
+                Emergency Blood Requests
+              </h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {activeRequests.slice(0, 3).map((request, index) => (
+                <div
+                  key={index}
+                  style={{
+                    background: 'white',
+                    padding: '1rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid var(--danger)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
                 >
-                  Trips
-                </button>
-                <button
-                  onClick={() => setActiveTab('requests')}
-                  className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 ${
-                    activeTab === 'requests'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-800'
-                  }`}
+                  <div>
+                    <div style={{ fontWeight: '600', color: 'var(--danger)' }}>
+                      {request.urgency.toUpperCase()}: {request.bloodType} needed
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {request.hospital.name} • {request.condition}
+                    </div>
+                  </div>
+                  <Link
+                    href="/blood-requests"
+                    className="btn"
+                    style={{ background: 'var(--danger)', color: 'white', fontSize: '0.75rem' }}
+                  >
+                    Respond
+                  </Link>
+                </div>
+              ))}
+            </div>
+            {activeRequests.length > 3 && (
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <Link
+                  href="/blood-requests"
+                  className="btn btn-outline"
+                  style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
                 >
-                  Requests
-                </button>
+                  View All {activeRequests.length} Requests
+                </Link>
               </div>
-            </div>
+            )}
           </div>
+        </section>
+      )}
 
-          {/* Tab Content Description */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-5">
-            <div className="flex items-start space-x-3">
-              <div className="text-blue-600 text-lg sm:text-xl bg-blue-100 p-2 rounded-lg">
-                {activeTab === 'trips' ? '✈️' : '📦'}
-              </div>
-              <div>
-                <h4 className="text-sm sm:text-base font-semibold text-blue-900 mb-1">
-                  {activeTab === 'trips' ? 'Available Trips' : 'Delivery Requests'}
-                </h4>
-                <p className="text-xs sm:text-sm text-blue-700">
-                  {activeTab === 'trips' 
-                    ? 'Find travelers going to your destination who can help deliver items'
-                    : 'Discover items that need to be delivered to places you\'re traveling to'
-                  }
-                </p>
-              </div>
+      {/* How It Works */}
+      <section style={{ padding: '3rem 1rem', background: 'var(--surface)' }}>
+        <div className="container">
+          <h3 style={{ fontSize: '1.5rem', fontWeight: '600', textAlign: 'center', marginBottom: '2rem' }}>
+            How BloodConnect Works
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                1. Register as Donor
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Sign up and add your blood type, medical info, and contact details
+              </p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
+              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                2. Get Notifications
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Receive real-time alerts when compatible blood is needed nearby
+              </p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🩸</div>
+              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                3. Save Lives
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Respond to urgent requests and help save lives in your community
+              </p>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Content */}
-        <div className="space-y-4 sm:space-y-6">
-          {activeTab === 'trips' ? <TripsList /> : <RequestsList />}
-        </div>
-      </main>
-
-      {/* Bottom Navigation */}
-      <Navigation />
+      {/* User Profile Status */}
+      {user && (
+        <section style={{ padding: '2rem 1rem', background: 'white' }}>
+          <div className="container">
+            <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>
+                Your Donor Status
+              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    Blood Type: <strong>{user.bloodType || 'Not set'}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    Status: <strong>{user.bloodType ? 'Active Donor' : 'Profile Incomplete'}</strong>
+                  </div>
+                </div>
+                <Link
+                  href="/profile"
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.875rem' }}
+                >
+                  {user.bloodType ? 'Update Profile' : 'Complete Profile'}
+                </Link>
+              </div>
+            </div>
+            
+            {/* Location Status */}
+            <LocationStatus />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

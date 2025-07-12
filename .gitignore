@@ -54,3 +54,6 @@ ui-debug.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# development temp files
+.tmp-verification-codes.json

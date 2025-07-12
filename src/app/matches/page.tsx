@@ -1,873 +1,478 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Using API routes instead of direct Firebase calls
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { useData } from '@/contexts/DataContext';
-import { useSocket } from '@/lib/websocket';
+import { useBloodNotifications } from '@/hooks/useBloodNotifications';
 import { apiClient } from '@/lib/api-client';
-import { Trip, Request, Match } from '@/types';
-import { calculateDistance, analyzeRoute, calculateGeographicScore, geocodeLocation, getProximityDescription } from '@/lib/geographic';
+import MobileHeader from '@/components/Layout/MobileHeader';
+import { calculateDistance } from '@/lib/geolocation';
+
+interface BloodRequest {
+  _id: string;
+  patientInfo: {
+    name: string;
+    age: number;
+    bloodType: string;
+    condition: string;
+  };
+  hospital: {
+    name: string;
+    address: string;
+    coordinates: { lat: number; lng: number };
+    contactNumber: string;
+  };
+  urgencyLevel: 'critical' | 'urgent' | 'standard';
+  requiredUnits: number;
+  deadline: string;
+  status: string;
+  matchedDonors: DonorMatch[];
+  createdAt: string;
+  contactInfo: {
+    requesterName: string;
+    requesterPhone: string;
+  };
+}
+
+interface DonorMatch {
+  donorId: string;
+  donorName: string;
+  donorBloodType: string;
+  status: 'pending' | 'accepted' | 'declined';
+  respondedAt: string;
+  message?: string;
+}
 
 export default function MatchesPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const toast = useToast();
-  const { trips, requests, matches, loading: dataLoading, refreshData } = useData();
-  const { socket, connected } = useSocket();
-  const [activeTab, setActiveTab] = useState<'potential' | 'my-matches' | 'messages'>('potential');
-  const [connectingMatches, setConnectingMatches] = useState<Set<string>>(new Set());
-  const [pendingNotifications, setPendingNotifications] = useState<any[]>([]);
+  const { activeRequests, respondToBloodRequest } = useBloodNotifications();
+  const [activeTab, setActiveTab] = useState<'my-donations' | 'my-requests'>('my-donations');
+  const [userRequests, setUserRequests] = useState<BloodRequest[]>([]);
+  const [userDonations, setUserDonations] = useState<DonorMatch[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Data is now handled by DataContext - no need for local fetching
-
-  // WebSocket notification listener
+  // Load user's blood requests and donations
   useEffect(() => {
-    if (socket && user && connected) {
-      // Join user's notification room
-      socket.emit('join', user.uid);
-      
-      // Listen for match notifications
-      socket.on('notification', (notification) => {
-        if (notification.type === 'match_request') {
-          // Show toast notification
-          toast.success(`New connection request from ${notification.fromUserName}!`);
-          
-          // Add to pending notifications
-          setPendingNotifications(prev => [...prev, notification]);
-          
-          // Refresh matches to show the new match
-          fetchMatches();
-          
-          // Show browser notification if permitted
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification(notification.title, {
-              body: notification.body,
-              icon: '/icon-192x192.png'
-            });
-          }
-        }
-      });
-
-      return () => {
-        socket.off('notification');
-      };
+    if (user) {
+      loadUserData();
     }
-  }, [socket, user, connected, toast]);
+  }, [user]);
 
-  // Helper function to fetch matches
-  const fetchMatches = useCallback(async () => {
-    // Refresh all data from the shared context
-    await refreshData();
-  }, [refreshData]);
-
-  // Enhanced location matching function
-  const getLocationCompatibility = useCallback((location1: string, location2: string): number => {
-    const loc1 = location1.toLowerCase().trim();
-    const loc2 = location2.toLowerCase().trim();
-    
-    // Exact match
-    if (loc1 === loc2) return 100;
-    
-    // Extract city and country parts
-    const parts1 = loc1.split(',').map(p => p.trim());
-    const parts2 = loc2.split(',').map(p => p.trim());
-    
-    // Check if any part matches (city, country, etc.)
-    for (const part1 of parts1) {
-      for (const part2 of parts2) {
-        if (part1 === part2) return 80;
-        if (part1.includes(part2) || part2.includes(part1)) return 60;
-      }
-    }
-    
-    // Check for country matches with common variations
-    const countryMappings = {
-      'united states': ['usa', 'us', 'america'],
-      'united kingdom': ['uk', 'england', 'britain', 'scotland', 'wales'],
-      'russia': ['russian federation'],
-      'south korea': ['korea'],
-      'netherlands': ['holland']
-    };
-    
-    for (const [country, variations] of Object.entries(countryMappings)) {
-      const allVariations = [country, ...variations];
-      const hasCountry1 = allVariations.some(v => loc1.includes(v));
-      const hasCountry2 = allVariations.some(v => loc2.includes(v));
-      if (hasCountry1 && hasCountry2) return 40;
-    }
-    
-    // Partial text similarity (basic)
-    const commonWords = ['airport', 'station', 'terminal', 'port', 'center', 'downtown'];
-    let commonWordsCount = 0;
-    for (const word of commonWords) {
-      if (loc1.includes(word) && loc2.includes(word)) commonWordsCount++;
-    }
-    if (commonWordsCount > 0) return 20;
-    
-    return 0;
-  }, []);
-
-  // Enhanced compatibility calculation with geographic proximity
-  const calculateCompatibility = useCallback((trip: Trip, request: Request) => {
-    // Item type compatibility (essential requirement)
-    if (!trip.allowedItems.includes(request.itemType)) {
-      return 0;
-    }
-    
-    // Date compatibility (critical requirement)
-    if (trip.departureDate > request.deadline) {
-      return 0;
-    }
-    
-    let score = 0;
-    
-    // Geographic scoring (if coordinates are available)
-    if (trip.fromCoords && trip.toCoords && request.fromCoords && request.toCoords) {
-      const routeAnalysis = analyzeRoute(
-        trip.fromCoords,
-        trip.toCoords,
-        request.fromCoords,
-        request.toCoords
-      );
-      
-      const geographicScore = calculateGeographicScore(routeAnalysis);
-      score += Math.round(geographicScore * 0.6); // 60% weight for geography
-      
-      // Bonus for being on route
-      if (routeAnalysis.isOnRoute) {
-        score += 10;
-      }
-    } else {
-      // Fallback to text-based location matching
-      const fromCompatibility = getLocationCompatibility(trip.from, request.from);
-      const toCompatibility = getLocationCompatibility(trip.to, request.to);
-      
-      score += Math.round(fromCompatibility * 0.3); // 30% weight for origin
-      score += Math.round(toCompatibility * 0.3);   // 30% weight for destination
-    }
-    
-    // Date compatibility scoring (20% weight)
-    const timeDiff = Math.abs(trip.departureDate.getTime() - request.deadline.getTime());
-    const daysDiff = timeDiff / (1000 * 3600 * 24);
-    
-    let dateScore = 0;
-    if (daysDiff <= 1) dateScore = 20; // Same day or next day
-    else if (daysDiff <= 3) dateScore = 15; // Within 3 days
-    else if (daysDiff <= 7) dateScore = 12; // Within a week
-    else if (daysDiff <= 14) dateScore = 8; // Within 2 weeks
-    else if (daysDiff <= 30) dateScore = 5; // Within a month
-    else dateScore = 2; // More than a month but still valid
-    
-    score += dateScore;
-    
-    // Item type and logistics bonus (10% weight)
-    score += 10;
-    
-    // Reward incentive (small bonus)
-    if (request.reward && request.reward.trim()) {
-      score += 5;
-    }
-    
-    // Ensure minimum score for valid matches
-    if (score < 15 && trip.allowedItems.includes(request.itemType) && trip.departureDate <= request.deadline) {
-      score = 15; // Minimum viable match
-    }
-    
-    const finalScore = Math.min(score, 100);
-    
-    return finalScore;
-  }, [getLocationCompatibility]);
-
-  // Get user's own trips and requests
-  const userTrips = useMemo(() => 
-    trips.filter(trip => trip.userId === user?.uid), 
-    [trips, user?.uid]
-  );
-  
-  const userRequests = useMemo(() => 
-    requests.filter(request => request.userId === user?.uid), 
-    [requests, user?.uid]
-  );
-
-  // Get other users' trips and requests
-  const otherUsersTrips = useMemo(() => 
-    trips.filter(trip => trip.userId !== user?.uid), 
-    [trips, user?.uid]
-  );
-  
-  const otherUsersRequests = useMemo(() => 
-    requests.filter(request => request.userId !== user?.uid), 
-    [requests, user?.uid]
-  );
-
-  // Proper matching logic
-  const potentialMatches = useMemo(() => {
-    if (!user) return [];
-
-    const matches: { 
-      type: 'trip-for-request' | 'request-for-trip'; 
-      trip: Trip; 
-      request: Request; 
-      compatibility: number;
-      isUserTrip: boolean;
-      isUserRequest: boolean;
-    }[] = [];
-    
-    // 1. If user has trips, find delivery requests from other users
-    userTrips.forEach(userTrip => {
-      otherUsersRequests.forEach(otherRequest => {
-        const compatibility = calculateCompatibility(userTrip, otherRequest);
-        if (compatibility > 0) {
-          matches.push({
-            type: 'request-for-trip',
-            trip: userTrip,
-            request: otherRequest,
-            compatibility,
-            isUserTrip: true,
-            isUserRequest: false
-          });
-        }
-      });
-    });
-
-    // 2. If user has requests, find available trips from other users
-    userRequests.forEach(userRequest => {
-      otherUsersTrips.forEach(otherTrip => {
-        const compatibility = calculateCompatibility(otherTrip, userRequest);
-        if (compatibility > 0) {
-          matches.push({
-            type: 'trip-for-request',
-            trip: otherTrip,
-            request: userRequest,
-            compatibility,
-            isUserTrip: false,
-            isUserRequest: true
-          });
-        }
-      });
-    });
-
-    return matches.sort((a, b) => b.compatibility - a.compatibility);
-  }, [userTrips, userRequests, otherUsersTrips, otherUsersRequests, calculateCompatibility]);
-
-  // Check if a match already exists between this user and the trip/request
-  const isMatchAlreadyCreated = useCallback((tripId: string, requestId: string) => {
-    return matches.some(match => 
-      match.tripId === tripId && match.requestId === requestId
-    );
-  }, [matches]);
-
-  const handleApproveMatch = useCallback(async (matchId: string, action: 'approve' | 'reject') => {
+  const loadUserData = async () => {
     try {
-      const response = await apiClient.put('/api/matches', {
-        _id: matchId,
-        action
-      });
+      setLoadingData(true);
       
-      if (response.ok) {
-        toast.success(action === 'approve' ? '✅ Match approved!' : '❌ Match rejected');
-        await fetchMatches(); // Refresh matches
-      } else {
-        throw new Error('Failed to update match');
+      // Load user's blood requests
+      const requestsResponse = await apiClient.get(`/api/blood-requests?requesterId=${user?.id}`);
+      if (requestsResponse.ok) {
+        const requestsData = await requestsResponse.json();
+        setUserRequests(requestsData.requests || []);
       }
+
+      // Load user's donation history
+      const donationsResponse = await apiClient.get(`/api/blood-requests/donations?donorId=${user?.id}`);
+      if (donationsResponse.ok) {
+        const donationsData = await donationsResponse.json();
+        setUserDonations(donationsData.donations || []);
+      }
+
     } catch (error) {
-      toast.error(`Failed to ${action} match. Please try again.`);
-      console.error(`Error ${action}ing match:`, error);
-    }
-  }, [toast, fetchMatches]);
-
-  const handleCreateMatch = useCallback(async (trip: Trip, request: Request) => {
-    if (!user) {
-      toast.error('Please log in to send connection requests.');
-      return;
-    }
-
-    // Check if match already exists
-    if (isMatchAlreadyCreated(trip.id, request.id)) {
-      toast.info('You have already sent a connection request for this match.');
-      return;
-    }
-
-    const matchKey = `${trip.id}-${request.id}`;
-    
-    // Prevent duplicate requests
-    if (connectingMatches.has(matchKey)) {
-      return;
-    }
-
-    setConnectingMatches(prev => new Set(prev).add(matchKey));
-
-    try {
-      const payload = {
-        tripId: trip.id,
-        requestId: request.id,
-      };
-      
-      const response = await apiClient.post('/api/matches', payload);
-      
-      if (response.ok) {
-        const newMatch = await response.json();
-        
-        // Create chat ID from user IDs (sorted alphabetically for consistency)
-        const otherUserId = trip.userId === user.uid ? request.userId : trip.userId;
-        const chatId = [user.uid, otherUserId].sort().join('_');
-        
-        // Show success message for sending request
-        toast.success('📨 Connection request sent! Wait for approval.');
-        
-        // Refresh matches to show updated state
-        await fetchMatches();
-      } else {
-        const errorData = await response.json();
-        if (response.status === 409) {
-          toast.info('You have already sent a connection request for this match.');
-        } else {
-          throw new Error(errorData.error || 'Failed to create match');
-        }
-      }
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast.error('Network error. Please check your connection and try again.');
-      } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to send connection request. Please try again.');
-      }
+      console.error('Error loading user data:', error);
+      toast.error('Failed to load your data');
     } finally {
-      setConnectingMatches(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(matchKey);
-        return newSet;
-      });
+      setLoadingData(false);
     }
-  }, [user, toast, connectingMatches, isMatchAlreadyCreated, fetchMatches]);
+  };
+
+  const handleDonorResponse = async (requestId: string, response: 'accepted' | 'declined') => {
+    try {
+      const apiResponse = await apiClient.post('/api/blood-requests/respond', {
+        requestId,
+        donorId: user?.id,
+        response
+      });
+
+      if (apiResponse.ok) {
+        respondToBloodRequest(requestId, response);
+        toast.success(`Response recorded: ${response}`);
+        loadUserData(); // Refresh data
+      } else {
+        const error = await apiResponse.text();
+        throw new Error(error || 'Failed to respond');
+      }
+    } catch (error) {
+      console.error('Error responding to request:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to respond');
+    }
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'critical': return 'var(--danger)';
+      case 'urgent': return 'var(--warning)';
+      case 'standard': return 'var(--primary)';
+      default: return 'var(--text-secondary)';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'accepted': return 'var(--success)';
+      case 'declined': return 'var(--danger)';
+      case 'pending': return 'var(--warning)';
+      default: return 'var(--text-secondary)';
+    }
+  };
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center">
-          <div className="text-5xl mb-4">🔒</div>
-          <p className="text-slate-600 font-medium">Please log in to view matches.</p>
+      <div style={{ minHeight: '100vh', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-muted)' }}>Access Restricted</div>
+          <p style={{ color: 'var(--text-secondary)' }}>Please log in to view your matches.</p>
         </div>
       </div>
     );
   }
 
-  // Show loading state while checking authentication
-  if (loading) {
+  if (loading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg mb-4 mx-auto">
-            <span className="text-white text-2xl">✈️</span>
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-slate-600 font-medium">Loading TravelConnect...</p>
+      <div style={{ minHeight: '100vh', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '2px solid transparent',
+            borderTop: '2px solid var(--danger)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }}></div>
+          <p style={{ color: 'var(--text-secondary)' }}>Loading matches...</p>
         </div>
       </div>
     );
   }
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    router.push('/');
-    return null;
-  }
-
-  // Show loading state while fetching data
-  if (dataLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg mb-4 mx-auto">
-            <span className="text-white text-2xl">🤝</span>
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-slate-600 font-medium">Loading matches...</p>
-        </div>
-      </div>
-    );
-  }
-
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
+    <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
+      <MobileHeader
+        title="My Matches"
+        rightAction={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
-              onClick={() => router.back()}
-              className="mr-4 text-slate-600 hover:text-slate-800 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              onClick={() => router.push('/messages')}
+              className="btn btn-outline"
+              style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
             >
-              ← Back
+              💬 Messages
             </button>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">🤝</span>
-              </div>
-              <h1 className="text-xl font-semibold text-slate-900">Matches</h1>
+            <button
+              onClick={() => router.push('/blood-requests')}
+              className="btn btn-primary"
+              style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
+            >
+              Find Requests
+            </button>
+          </div>
+        }
+      />
+
+      <main className="container" style={{ padding: '2rem 1rem' }}>
+        {/* Stats Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.25rem' }}>
+              {userDonations.filter(d => d.status === 'accepted').length}
             </div>
-            <div className="flex items-center space-x-3">
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                connected 
-                  ? 'text-emerald-600 bg-emerald-50' 
-                  : 'text-red-600 bg-red-50'
-              }`}>
-                {connected ? '🟢 Connected' : '🔴 Disconnected'}
-              </span>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Donations Made
+            </div>
+          </div>
+          <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--warning)', marginBottom: '0.25rem' }}>
+              {userRequests.filter(r => r.status === 'active').length}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Active Requests
+            </div>
+          </div>
+          <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '0.25rem' }}>
+              {activeRequests.length}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Pending Responses
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Pending Notifications */}
-        {pendingNotifications.length > 0 && (
-          <div className="mb-6 space-y-3">
-            <h3 className="text-lg font-semibold text-slate-900 flex items-center space-x-2">
-              <span>🔔</span>
-              <span>New Connection Requests</span>
+        {/* Tab Navigation */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ 
+            display: 'inline-flex',
+            background: 'white',
+            borderRadius: '0.75rem',
+            border: '1px solid var(--border-light)',
+            padding: '4px'
+          }}>
+            <button
+              onClick={() => setActiveTab('my-donations')}
+              style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                background: activeTab === 'my-donations' ? 'var(--success)' : 'transparent',
+                color: activeTab === 'my-donations' ? 'white' : 'var(--text-secondary)',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              My Donations
+            </button>
+            <button
+              onClick={() => setActiveTab('my-requests')}
+              style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                background: activeTab === 'my-requests' ? 'var(--warning)' : 'transparent',
+                color: activeTab === 'my-requests' ? 'white' : 'var(--text-secondary)',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              My Requests
+            </button>
+          </div>
+        </div>
+
+        {/* Active Emergency Requests */}
+        {activeRequests.length > 0 && (
+          <div style={{ marginBottom: '2rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--danger)', marginBottom: '1rem' }}>
+              Emergency Requests Awaiting Response
             </h3>
-            {pendingNotifications.map((notification, index) => (
-              <div key={index} className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4 animate-slide-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600">👤</span>
+            {activeRequests.slice(0, 3).map((request, index) => (
+              <div
+                key={index}
+                style={{
+                  padding: '1rem',
+                  background: 'rgba(220, 38, 38, 0.1)',
+                  border: '1px solid var(--danger)',
+                  borderRadius: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', color: 'var(--danger)' }}>
+                      {request.urgency.toUpperCase()}: {request.bloodType} needed
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-blue-900">{notification.fromUserName}</h4>
-                      <p className="text-sm text-blue-700">{notification.body}</p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        {notification.tripRoute} ↔ {notification.requestRoute}
-                      </p>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {request.hospital.name} • {request.condition}
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setPendingNotifications(prev => prev.filter((_, i) => i !== index));
-                      setActiveTab('my-matches');
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    View Match
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => respondToBloodRequest(request.requestId, 'accepted')}
+                      className="btn"
+                      style={{ 
+                        background: 'var(--success)', 
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        padding: '0.5rem 0.75rem'
+                      }}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => respondToBloodRequest(request.requestId, 'declined')}
+                      className="btn btn-outline"
+                      style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className="mb-8">
-          {/* Debug info */}
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg text-sm">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-              <div>
-                <div className="font-semibold text-blue-900">Your Trips</div>
-                <div className="text-blue-700">{userTrips.length}</div>
-              </div>
-              <div>
-                <div className="font-semibold text-blue-900">Your Requests</div>
-                <div className="text-blue-700">{userRequests.length}</div>
-              </div>
-              <div>
-                <div className="font-semibold text-green-900">Available Trips</div>
-                <div className="text-green-700">{otherUsersTrips.length}</div>
-              </div>
-              <div>
-                <div className="font-semibold text-green-900">Available Requests</div>
-                <div className="text-green-700">{otherUsersRequests.length}</div>
-              </div>
-              <div>
-                <div className="font-semibold text-purple-900">Notifications</div>
-                <div className="text-purple-700">{pendingNotifications.length}</div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg max-w-2xl">
-            <button
-              onClick={() => setActiveTab('potential')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                activeTab === 'potential'
-                  ? 'bg-white text-purple-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              🔍 Find Matches
-            </button>
-            <button
-              onClick={() => setActiveTab('my-matches')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                activeTab === 'my-matches'
-                  ? 'bg-white text-purple-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              📋 My Connections
-            </button>
-            <button
-              onClick={() => setActiveTab('messages')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                activeTab === 'messages'
-                  ? 'bg-white text-purple-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              💬 Messages
-            </button>
-          </div>
-        </div>
-
-        {activeTab === 'potential' && (
-          <div className="space-y-6">
-            {potentialMatches.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">🔍</div>
-                <p className="text-slate-500 text-lg mb-4 font-medium">No potential matches found</p>
-                <p className="text-slate-400">Try posting a trip or request to find matches</p>
+        {/* Content based on active tab */}
+        {activeTab === 'my-donations' && (
+          <div>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+              My Donation History
+            </h3>
+            {userDonations.length === 0 ? (
+              <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🩸</div>
+                <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  No Donations Yet
+                </h4>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                  Start saving lives by responding to blood requests
+                </p>
+                <button
+                  onClick={() => router.push('/blood-requests')}
+                  className="btn btn-primary"
+                >
+                  Find Blood Requests
+                </button>
               </div>
             ) : (
-              potentialMatches.map((match, index) => {
-                const matchKey = `${match.trip.id}-${match.request.id}`;
-                const isConnecting = connectingMatches.has(matchKey);
-                const alreadyConnected = isMatchAlreadyCreated(match.trip.id, match.request.id);
-                
-                return (
-                <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow animate-slide-in">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                        {match.compatibility}% Match
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {userDonations.map((donation, index) => (
+                  <div key={index} className="card" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                          {donation.donorBloodType} Blood Donation
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                          Responded: {new Date(donation.respondedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        color: getStatusColor(donation.status),
+                        background: `${getStatusColor(donation.status)}20`,
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '1rem'
+                      }}>
+                        {donation.status.toUpperCase()}
                       </span>
-                      <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">
-                        {match.type === 'request-for-trip' 
-                          ? '📦 Someone wants you to deliver' 
-                          : '✈️ Someone can deliver for you'
-                        }
-                      </div>
                     </div>
-                    <button
-                      onClick={() => handleCreateMatch(match.trip, match.request)}
-                      disabled={alreadyConnected || isConnecting}
-                      className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center space-x-2 ${
-                        alreadyConnected 
-                          ? 'bg-gray-400 text-white cursor-not-allowed'
-                          : isConnecting
-                          ? 'bg-purple-400 text-white cursor-not-allowed'
-                          : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                      }`}
-                    >
-                      {isConnecting ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Connecting...</span>
-                        </>
-                      ) : alreadyConnected ? (
-                        <>
-                          <span>✅</span>
-                          <span>Connected</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>📤</span>
-                          <span>Send Request</span>
-                        </>
-                      )}
-                    </button>
+                    {donation.message && (
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        color: 'var(--text-secondary)',
+                        background: 'var(--surface)',
+                        padding: '0.75rem',
+                        borderRadius: '0.5rem',
+                        fontStyle: 'italic'
+                      }}>
+                        "{donation.message}"
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="border-r border-slate-200 pr-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <span className="text-blue-600">✈️</span>
-                          </div>
-                          <h3 className="font-semibold text-slate-900">
-                            {match.isUserTrip ? 'Your Trip' : 'Available Trip'}
-                          </h3>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'my-requests' && (
+          <div>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+              My Blood Requests
+            </h3>
+            {userRequests.length === 0 ? (
+              <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚨</div>
+                <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  No Requests Created
+                </h4>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                  Create an emergency blood request when needed
+                </p>
+                <button
+                  onClick={() => router.push('/request-blood')}
+                  className="btn btn-primary"
+                >
+                  Create Blood Request
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {userRequests.map((request, index) => (
+                  <div key={index} className="card" style={{ padding: '1.5rem', borderLeft: `4px solid ${getUrgencyColor(request.urgencyLevel)}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                          {request.patientInfo.bloodType} Blood Request
                         </div>
-                        {!match.isUserTrip && (
-                          <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium">
-                            Other Traveler
-                          </span>
-                        )}
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                          Patient: {request.patientInfo.name} ({request.patientInfo.age} years)
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                          Hospital: {request.hospital.name}
+                        </div>
                       </div>
-                      <p className="text-lg font-semibold text-blue-600 mb-2">
-                        {match.trip.from} → {match.trip.to}
-                      </p>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-                            📅 {match.trip.departureDate.toLocaleDateString()} - {match.trip.arrivalDate.toLocaleDateString()}
-                          </span>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: '600',
+                          color: getUrgencyColor(request.urgencyLevel),
+                          background: `${getUrgencyColor(request.urgencyLevel)}20`,
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '1rem',
+                          marginBottom: '0.5rem'
+                        }}>
+                          {request.urgencyLevel.toUpperCase()}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-                            🎽 {match.trip.capacity}kg capacity
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <p className="text-sm text-slate-600 mb-2 font-medium">Allowed items:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {match.trip.allowedItems.slice(0, 3).map((item: string, i: number) => (
-                            <span key={i} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                              {item}
-                            </span>
-                          ))}
-                          {match.trip.allowedItems.length > 3 && (
-                            <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full font-medium">
-                              +{match.trip.allowedItems.length - 3} more
-                            </span>
-                          )}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          {request.matchedDonors.length} responses
                         </div>
                       </div>
                     </div>
                     
-                    <div className="pl-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                            <span className="text-emerald-600">📦</span>
-                          </div>
-                          <h3 className="font-semibold text-slate-900">
-                            {match.isUserRequest ? 'Your Request' : 'Delivery Request'}
-                          </h3>
-                        </div>
-                        {!match.isUserRequest && (
-                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full font-medium">
-                            Needs Delivery
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-lg font-semibold text-emerald-600 mb-2">
-                        {match.request.from} → {match.request.to}
-                      </p>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-                            ⏰ {match.request.deadline.toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-                            📊 {match.request.itemType}
-                          </span>
-                        </div>
-                      </div>
-                      {match.request.reward && (
-                        <div className="mt-3">
-                          <p className="text-sm text-emerald-600 font-semibold bg-emerald-50 px-2 py-1 rounded-lg inline-block">
-                            💰 {match.request.reward}
-                          </p>
-                        </div>
-                      )}
-                      {match.request.description && (
-                        <p className="text-sm text-slate-600 mt-3 bg-slate-50 p-2 rounded-lg line-clamp-2 italic">
-                          "{match.request.description}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {activeTab === 'my-matches' && (
-          <div className="space-y-4">
-            {matches.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">🤝</div>
-                <p className="text-slate-500 text-lg mb-4 font-medium">No matches yet</p>
-                <p className="text-slate-400">Connect with potential matches to see them here</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Pending Approvals */}
-                {matches.filter(match => match.status === 'pending' && match.userId !== user.uid).length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-orange-800 mb-4 flex items-center space-x-2">
-                      <span>⏳</span>
-                      <span>Pending Your Approval</span>
-                    </h3>
-                    <div className="space-y-4">
-                      {matches
-                        .filter(match => match.status === 'pending' && match.userId !== user.uid)
-                        .map((match) => (
-                          <div key={match.id} className="bg-orange-50 border border-orange-200 rounded-xl p-6 animate-slide-in">
-                            <div className="flex items-center justify-between mb-4">
+                    {request.matchedDonors.length > 0 && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <h5 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                          Donor Responses ({request.matchedDonors.length})
+                        </h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {request.matchedDonors.slice(0, 3).map((donor, donorIndex) => (
+                            <div key={donorIndex} style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '0.5rem',
+                              background: 'var(--surface)',
+                              borderRadius: '0.375rem'
+                            }}>
                               <div>
-                                <h4 className="font-semibold text-orange-900 mb-1">New Connection Request</h4>
-                                <p className="text-sm text-orange-700">
-                                  Someone wants to connect with your {match.trip ? 'trip' : 'request'}
-                                </p>
+                                <span style={{ fontWeight: '500' }}>{donor.donorName}</span>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                                  ({donor.donorBloodType})
+                                </span>
                               </div>
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleApproveMatch(match.id, 'approve')}
-                                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium flex items-center space-x-1"
-                                >
-                                  <span>✅</span>
-                                  <span>Approve</span>
-                                </button>
-                                <button
-                                  onClick={() => handleApproveMatch(match.id, 'reject')}
-                                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center space-x-1"
-                                >
-                                  <span>❌</span>
-                                  <span>Reject</span>
-                                </button>
-                              </div>
-                            </div>
-                            {match.trip && (
-                              <div className="text-sm text-orange-800 bg-orange-100 p-3 rounded-lg">
-                                <strong>Trip:</strong> {match.trip.from} → {match.trip.to} on {new Date(match.trip.departureDate).toLocaleDateString()}
-                              </div>
-                            )}
-                            {match.request && (
-                              <div className="text-sm text-orange-800 bg-orange-100 p-3 rounded-lg mt-2">
-                                <strong>Request:</strong> {match.request.from} → {match.request.to} by {new Date(match.request.deadline).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* My Requests */}
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center space-x-2">
-                    <span>📋</span>
-                    <span>My Connection Requests</span>
-                  </h3>
-                  <div className="space-y-4">
-                    {matches.filter(match => match.userId === user.uid).length === 0 ? (
-                      <div className="text-center py-8 bg-slate-50 rounded-xl">
-                        <p className="text-slate-500">No connection requests sent yet</p>
-                      </div>
-                    ) : (
-                      matches
-                        .filter(match => match.userId === user.uid)
-                        .map((match) => (
-                          <div key={match.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow animate-slide-in">
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h4 className="font-semibold text-slate-900 mb-1">Request #{match.id.slice(-6)}</h4>
-                                <p className="text-sm text-slate-600">
-                                  Status: <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
-                                    match.status === 'pending' ? 'text-yellow-700 bg-yellow-100' :
-                                    match.status === 'accepted' ? 'text-emerald-700 bg-emerald-100' :
-                                    'text-red-700 bg-red-100'
-                                  }`}>
-                                    {match.status === 'pending' ? 'Awaiting Approval' : 
-                                     match.status === 'accepted' ? 'Approved' : 'Rejected'}
-                                  </span>
-                                </p>
-                              </div>
-                              <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                                {match.createdAt.toLocaleDateString()}
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: getStatusColor(donor.status),
+                                background: `${getStatusColor(donor.status)}20`,
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '0.375rem'
+                              }}>
+                                {donor.status}
                               </span>
                             </div>
-                            {match.status === 'accepted' && (
-                              <button
-                                onClick={() => {
-                                  const otherUserId = match.otherUserId;
-                                  if (otherUserId) {
-                                    const chatId = [user.uid, otherUserId].sort().join('_');
-                                    router.push(`/messages?chat=${chatId}`);
-                                  }
-                                }}
-                                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
-                              >
-                                <span>💬</span>
-                                <span>Open Chat</span>
-                              </button>
-                            )}
-                          </div>
-                        ))
+                          ))}
+                          {request.matchedDonors.length > 3 && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                              +{request.matchedDonors.length - 3} more responses
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                ))}
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'messages' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg mb-4 mx-auto">
-                  <span className="text-white text-2xl">💬</span>
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Messages & Connections</h3>
-                <p className="text-slate-600 mb-6">Coordinate with travelers and senders for your deliveries</p>
-                
-                {matches.filter(match => match.status === 'accepted').length === 0 ? (
-                  <div className="space-y-4">
-                    <div className="text-4xl mb-4">📭</div>
-                    <p className="text-slate-500 font-medium">No active conversations yet</p>
-                    <p className="text-slate-400 text-sm">When you connect with travelers or accept delivery requests, your conversations will appear here.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {matches
-                      .filter(match => match.status === 'accepted')
-                      .map((match, index) => (
-                        <div key={index} className="bg-slate-50 rounded-lg p-4 text-left">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-slate-900">
-                              Active Delivery #{match.id.slice(-6)}
-                            </h4>
-                            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                              {match.status}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-600">
-                            Connected on {match.createdAt.toLocaleDateString()}
-                          </p>
-                          <button 
-                            onClick={() => {
-                              // Get the other user ID from the match
-                              const otherUserId = match.userId === user.uid ? 
-                                (trips.find(t => t.id === match.tripId)?.userId || requests.find(r => r.id === match.requestId)?.userId) :
-                                match.userId;
-                              
-                              if (otherUserId) {
-                                const chatId = [user.uid, otherUserId].sort().join('_');
-                                router.push(`/messages?chat=${chatId}`);
-                              }
-                            }}
-                            className="mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium"
-                          >
-                            💬 Open Conversation →
-                          </button>
-                        </div>
-                      ))
-                    }
-                  </div>
-                )}
-                
-                <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-semibold text-blue-900 mb-2">💡 How it works</h4>
-                  <div className="text-sm text-blue-800 space-y-1">
-                    <p>• When you connect with someone, they'll be notified</p>
-                    <p>• Use messages to coordinate pickup/delivery details</p>
-                    <p>• Share contact info safely within the app</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

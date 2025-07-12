@@ -35,6 +35,27 @@ const nextConfig: NextConfig = {
   compress: true,
   // Bundle analyzer optimization
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Exclude server-only modules from client bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        path: false,
+        os: false,
+        stream: false,
+        https: false,
+        http: false,
+        url: false,
+        zlib: false,
+        querystring: false,
+        util: false,
+        buffer: false,
+      };
+    }
+
     // Optimize bundle splits
     config.optimization.splitChunks = {
       chunks: 'all',

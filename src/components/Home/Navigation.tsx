@@ -4,12 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from '@/contexts/LocationContext';
 import { useSocket } from '@/lib/websocket';
 import { useToast } from '@/contexts/ToastContext';
+import LocationStatus from '@/components/Common/LocationStatus';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { location } = useLocation();
   const { socket, connected } = useSocket();
   const toast = useToast();
   const [hasNotifications, setHasNotifications] = useState(false);
@@ -17,7 +20,7 @@ export default function Navigation() {
   // Global notification listener
   useEffect(() => {
     if (socket && user && connected) {
-      socket.emit('join', user.uid);
+      socket.emit('join', user.id || user.uid);
       
       socket.on('notification', (notification) => {
         if (notification.type === 'match_request') {
@@ -48,36 +51,111 @@ export default function Navigation() {
   }, [pathname]);
 
   const navItems = [
-    { href: '/', label: 'Home', icon: '🏠' },
-    { href: '/post-trip', label: 'Post Trip', icon: '✈️' },
-    { href: '/post-request', label: 'Post Request', icon: '📦' },
-    { href: '/matches', label: 'Matches', icon: '🤝', hasNotification: hasNotifications },
-    { href: '/messages', label: 'Messages', icon: '💬' },
-    { href: '/profile', label: 'Profile', icon: '👤' },
+    { href: '/', label: 'Home', icon: 'H' },
+    { href: '/blood-requests', label: 'Requests', icon: '🩸' },
+    { href: '/request-blood', label: 'Emergency', icon: '🚨' },
+    { href: '/matches', label: 'Matches', icon: 'M', hasNotification: hasNotifications },
+    { href: '/messages', label: 'Messages', icon: 'C' },
+    { href: '/profile', label: 'Profile', icon: 'P' },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2 shadow-lg">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-around">
+    <nav style={{
+      background: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(12px)',
+      borderTop: '1px solid var(--border-light)',
+      padding: '0.5rem 1rem',
+      boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)'
+    }}>
+      <div style={{ 
+        maxWidth: '480px', // Optimized for mobile
+        margin: '0 auto'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-around',
+          alignItems: 'center'
+        }}>
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center py-2 px-3 text-xs font-medium transition-all duration-200 rounded-lg ${
-                pathname === item.href
-                  ? 'text-blue-600 bg-blue-50 scale-105'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-              }`}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minWidth: '52px', // Ensure adequate touch target
+                minHeight: '52px',
+                padding: '0.5rem 0.25rem',
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                textDecoration: 'none',
+                borderRadius: '0.75rem',
+                transition: 'all 0.2s ease',
+                color: pathname === item.href ? 'var(--primary)' : 'var(--text-muted)',
+                background: pathname === item.href ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
+                transform: pathname === item.href ? 'scale(1.05)' : 'scale(1)'
+              }}
+              onMouseEnter={(e) => {
+                if (pathname !== item.href) {
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (pathname !== item.href) {
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
             >
-              <span className={`text-lg mb-1 transition-transform duration-200 ${
-                pathname === item.href ? 'scale-110' : ''
-              }`}>
+              {/* Icon */}
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: pathname === item.href 
+                  ? 'var(--primary)' 
+                  : 'var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '0.25rem',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: pathname === item.href ? 'white' : 'var(--text-secondary)',
+                transition: 'all 0.2s ease',
+                transform: pathname === item.href ? 'scale(1.1)' : 'scale(1)'
+              }}>
                 {item.icon}
+              </div>
+              
+              {/* Label */}
+              <span style={{ 
+                lineHeight: '1.2',
+                textAlign: 'center',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '48px'
+              }}>
+                {item.label}
               </span>
-              <span className="leading-tight">{item.label}</span>
+              
+              {/* Notification Badge */}
               {item.hasNotification && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                <div style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '8px',
+                  width: '12px',
+                  height: '12px',
+                  background: 'var(--danger)',
+                  borderRadius: '50%',
+                  border: '2px solid white',
+                  animation: 'pulse 2s infinite'
+                }}></div>
               )}
             </Link>
           ))}

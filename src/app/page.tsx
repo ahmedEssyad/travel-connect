@@ -1,20 +1,26 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import LoginForm from '@/components/Auth/LoginForm';
+import FriendlyLogin from '@/components/Auth/FriendlyLogin';
 import HomePage from '@/components/Home/HomePage';
-import { TravelConnectLoading } from '@/components/Common/Loading';
+import LocationPermission from '@/components/Common/LocationPermission';
+import { BloodConnectLoading } from '@/components/Common/Loading';
 
 export default function Home() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <TravelConnectLoading />;
+    return <BloodConnectLoading />;
   }
 
   if (!user) {
-    return <LoginForm />;
+    return <FriendlyLogin />;
   }
 
-  return <HomePage />;
+  return (
+    <>
+      <HomePage />
+      <LocationPermission />
+    </>
+  );
 }

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Verify user has access to this chat
     // Chat ID should be formatted as "userId1_userId2" sorted alphabetically
     const chatUserIds = chatId.split('_');
-    if (chatUserIds.length !== 2 || !chatUserIds.includes(user.uid)) {
+    if (chatUserIds.length !== 2 || !chatUserIds.includes(user.id)) {
       throw createApiError('Unauthorized access to chat', HttpStatus.FORBIDDEN, ErrorTypes.AUTHORIZATION_ERROR);
     }
     
@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let body: any = null;
+  
   try {
     // Verify authentication
     const { authenticated, user, error } = await requireAuth(request);
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
     
-    const body = await request.json();
+    body = await request.json();
     
     // Validate input data
     const validation = validateData(messageCreateSchema, body);
@@ -59,14 +61,14 @@ export async function POST(request: NextRequest) {
     
     // Verify user has access to this chat
     const chatUserIds = chatId.split('_');
-    if (chatUserIds.length !== 2 || !chatUserIds.includes(user.uid)) {
+    if (chatUserIds.length !== 2 || !chatUserIds.includes(user.id)) {
       throw createApiError('Unauthorized access to chat', HttpStatus.FORBIDDEN, ErrorTypes.AUTHORIZATION_ERROR);
     }
     
     // Ensure the senderId matches the authenticated user
     const messageData = {
       chatId,
-      senderId: user.uid, // Override with authenticated user's ID
+      senderId: user.id, // Override with authenticated user's ID
       text: text.trim(),
       timestamp: new Date()
     };

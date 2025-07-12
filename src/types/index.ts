@@ -1,16 +1,43 @@
 export interface User {
-  uid: string;
-  email: string;
+  id: string;
+  phoneNumber: string;
   name: string;
+  email?: string;
   photo?: string;
-  location?: string;
+  bloodType?: string;
   bio?: string;
+  medicalInfo?: {
+    weight?: number;
+    age?: number;
+    lastDonationDate?: Date;
+    medicalConditions?: string[];
+    availableForDonation?: boolean;
+    isDonor?: boolean;
+  };
+  emergencyContacts?: {
+    name?: string;
+    phone?: string;
+    relationship?: string;
+  }[];
+  notificationPreferences?: {
+    sms?: boolean;
+    push?: boolean;
+    email?: boolean;
+    urgencyLevels?: string[];
+  };
+  deviceTokens?: string[];
+  isVerified?: boolean;
+  hasPassword?: boolean;
   rating: number;
+  totalDonations?: number;
+  isProfileComplete?: boolean;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Trip {
   _id: string;
+  id: string; // For compatibility
   userId: string;
   from: string;
   to: string;
@@ -22,11 +49,14 @@ export interface Trip {
   capacity: number;
   allowedItems: string[];
   description?: string;
+  photos?: string[]; // Trip photos
+  status?: 'active' | 'completed' | 'cancelled';
   createdAt: Date;
 }
 
 export interface Request {
   _id: string;
+  id: string; // For compatibility
   userId: string;
   from: string;
   to: string;
@@ -38,6 +68,8 @@ export interface Request {
   description?: string;
   reward?: string;
   photo?: string;
+  photos?: string[]; // Multiple item photos
+  status?: 'active' | 'matched' | 'completed' | 'cancelled';
   createdAt: Date;
 }
 

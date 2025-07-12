@@ -1,20 +1,21 @@
 import { NextRequest } from 'next/server';
+import { verifyAuthToken as verifyJWT } from '@/lib/sms-auth';
+import connectDB from '@/lib/mongodb';
+import User from '@/models/User';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
-    uid: string;
-    email: string;
-    emailVerified: boolean;
+    id: string;
+    phoneNumber: string;
+    name: string;
+    email?: string;
+    bloodType?: string;
   };
 }
 
 export async function verifyAuthToken(request: NextRequest): Promise<{ user: any; error?: string }> {
   try {
     const authHeader = request.headers.get('authorization');
-    const userIdHeader = request.headers.get('X-User-ID') || request.headers.get('x-user-id');
-    const userEmailHeader = request.headers.get('X-User-Email') || request.headers.get('x-user-email');
-    
-    // Debug logging removed for production
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return { user: null, error: 'No authentication token provided' };
@@ -22,35 +23,29 @@ export async function verifyAuthToken(request: NextRequest): Promise<{ user: any
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
-    // For development: Simple validation with improved security
-    // In production, use Firebase Admin SDK to verify the token
-    if (token.length < 10) {
-      return { user: null, error: 'Invalid token format' };
+    // Verify JWT token
+    const decoded = verifyJWT(token);
+    if (!decoded) {
+      return { user: null, error: 'Invalid or expired token' };
     }
+
+    // Get user from database
+    await connectDB();
+    const user = await User.findById(decoded.userId);
     
-    // Basic token validation - in production, this should verify with Firebase
-    // For now, require tokens to be at least somewhat complex
-    if (!token.includes('.') || token.length < 20) {
-      return { user: null, error: 'Invalid token structure' };
+    if (!user) {
+      return { user: null, error: 'User not found' };
     }
-    
-    // Extract user info from headers (already retrieved above)
-    // WARNING: This is not secure for production - should verify with Firebase
-    
-    if (!userIdHeader) {
-      return { user: null, error: 'User ID header missing' };
-    }
-    
-    // Basic UID validation
-    if (userIdHeader.length < 10 || userIdHeader.includes(' ')) {
-      return { user: null, error: 'Invalid user ID format' };
-    }
-    
+
     return {
       user: {
-        uid: userIdHeader,
-        email: userEmailHeader || '',
-        emailVerified: true,
+        id: user._id.toString(),
+        uid: user._id.toString(), // For backward compatibility
+        phoneNumber: user.phoneNumber,
+        name: user.name,
+        email: user.email,
+        bloodType: user.bloodType,
+        emailVerified: true, // Phone verification handles this
       }
     };
   } catch (error) {

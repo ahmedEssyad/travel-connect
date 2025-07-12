@@ -1,251 +1,788 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { useData } from '@/contexts/DataContext';
+import { apiClient } from '@/lib/api-client';
+import BloodTypeSelector from '@/components/Profile/BloodTypeSelector';
+import PasswordSetup from '@/components/Auth/PasswordSetup';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
-  const { trips, requests } = useData();
+  const { user, logout, refreshUser } = useAuth();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [editing, setEditing] = useState<boolean | 'password'>(false);
   const [formData, setFormData] = useState({
     name: '',
-    location: '',
-    bio: '',
-    photo: '',
+    email: '',
+    bloodType: '',
+    medicalInfo: {
+      weight: 0,
+      age: 0,
+      availableForDonation: false,
+      isDonor: false,
+      medicalConditions: []
+    },
+    emergencyContacts: []
   });
 
-  const userTrips = trips?.filter(trip => trip.userId === user?.uid) || [];
-  const userRequests = requests?.filter(request => request.userId === user?.uid) || [];
-
+  // Load user data when component mounts
   useEffect(() => {
     if (user) {
       setFormData({
         name: user.name || '',
-        location: user.location || '',
-        bio: user.bio || '',
-        photo: user.photo || '',
+        email: user.email || '',
+        bloodType: user.bloodType || '',
+        medicalInfo: {
+          weight: user.medicalInfo?.weight || 0,
+          age: user.medicalInfo?.age || 0,
+          availableForDonation: user.medicalInfo?.availableForDonation || false,
+          isDonor: user.medicalInfo?.isDonor || false,
+          medicalConditions: user.medicalInfo?.medicalConditions || []
+        },
+        emergencyContacts: user.emergencyContacts || []
       });
     }
   }, [user]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSave = async () => {
     if (!user) return;
 
     if (!formData.name.trim()) {
-      toast.error('Name is required.');
+      toast.error('Name is required');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: user.uid,
-          ...formData,
-          name: formData.name.trim(),
-          location: formData.location.trim(),
-          bio: formData.bio.trim(),
-        }),
-      });
+      const response = await apiClient.put('/api/auth/profile', formData);
       
       if (response.ok) {
+        await refreshUser();
+        setEditing(false);
         toast.success('Profile updated successfully!');
       } else {
-        throw new Error('Failed to update profile');
+        const error = await response.text();
+        toast.error(error || 'Failed to update profile');
       }
     } catch (error) {
-      toast.error('Failed to update profile. Please try again.');
+      console.error('Profile update error:', error);
+      toast.error('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCancel = () => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        bloodType: user.bloodType || '',
+        medicalInfo: {
+          weight: user.medicalInfo?.weight || 0,
+          age: user.medicalInfo?.age || 0,
+          availableForDonation: user.medicalInfo?.availableForDonation || false,
+          isDonor: user.medicalInfo?.isDonor || false,
+          medicalConditions: user.medicalInfo?.medicalConditions || []
+        },
+        emergencyContacts: user.emergencyContacts || []
+      });
+    }
+    setEditing(false);
+  };
+
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="text-5xl mb-4">🔒</div>
-          <p className="text-slate-600">Please log in to view your profile.</p>
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'var(--surface)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-muted)' }}>
+            Access Restricted
+          </div>
+          <p style={{ color: 'var(--text-secondary)' }}>Please log in to view your profile.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.back()}
-                className="text-slate-600 hover:text-slate-800 p-2 rounded-lg hover:bg-slate-100"
-              >
-                ← Back
-              </button>
-              <h1 className="text-xl font-semibold text-slate-900">Profile</h1>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'var(--surface)',
+      padding: '1rem'
+    }}>
+      <div style={{ 
+        maxWidth: '600px', 
+        margin: '0 auto'
+      }}>
+        {/* Header */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '2rem'
+        }}>
+          <h1 style={{ 
+            fontSize: '1.5rem', 
+            fontWeight: '700',
+            color: 'var(--text-primary)',
+            margin: '0'
+          }}>
+            My Profile
+          </h1>
+          <button
+            onClick={logout}
+            className="btn btn-outline"
+            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+          >
+            Logout
+          </button>
+        </div>
+
+        {/* Profile Card */}
+        <div className="card" style={{ 
+          padding: '2rem',
+          marginBottom: '2rem'
+        }}>
+          {/* Profile Header */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: '1rem',
+            marginBottom: '2rem'
+          }}>
+            <div style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              background: 'var(--danger)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '1.5rem',
+              fontWeight: '600'
+            }}>
+              {user.name ? user.name.charAt(0).toUpperCase() : '?'}
             </div>
-            <button
-              onClick={logout}
-              className="text-red-600 hover:text-red-800 px-3 py-1 rounded-lg hover:bg-red-50"
-            >
-              Logout
-            </button>
+            <div>
+              <h2 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600',
+                color: 'var(--text-primary)',
+                margin: '0 0 0.25rem 0'
+              }}>
+                {user.name || 'Complete your profile'}
+              </h2>
+              <p style={{ 
+                color: 'var(--text-secondary)',
+                margin: '0',
+                fontSize: '0.875rem'
+              }}>
+                {user.phoneNumber}
+              </p>
+            </div>
           </div>
-        </div>
-      </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1 mb-6">
-          <div className="grid grid-cols-3 gap-1">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`px-4 py-3 rounded-lg font-medium text-sm ${
-                activeTab === 'profile'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              👤 Profil
-            </button>
-            <button
-              onClick={() => setActiveTab('trips')}
-              className={`px-4 py-3 rounded-lg font-medium text-sm ${
-                activeTab === 'trips'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              🚗 Mes Voyages ({userTrips.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('requests')}
-              className={`px-4 py-3 rounded-lg font-medium text-sm ${
-                activeTab === 'requests'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              📦 Mes Demandes ({userRequests.length})
-            </button>
-          </div>
-        </div>
+          {!editing ? (
+            // Display Mode
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Basic Info */}
+                <div>
+                  <h3 style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '1rem'
+                  }}>
+                    Basic Information
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <label style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: '500',
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Name
+                      </label>
+                      <div style={{ 
+                        fontSize: '1rem',
+                        color: 'var(--text-primary)',
+                        fontWeight: '500'
+                      }}>
+                        {user.name || 'Not set'}
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: '500',
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Blood Type
+                      </label>
+                      <div style={{ 
+                        fontSize: '1rem',
+                        color: user.bloodType ? 'var(--danger)' : 'var(--text-muted)',
+                        fontWeight: '600'
+                      }}>
+                        {user.bloodType || 'Not set'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-        {activeTab === 'profile' && (
-          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6">Profile Settings</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  👤 Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                {/* Medical Info */}
+                {user.medicalInfo && (user.medicalInfo.age || user.medicalInfo.weight || user.medicalInfo.isDonor) && (
+                  <div>
+                    <h3 style={{ 
+                      fontSize: '1rem', 
+                      fontWeight: '600',
+                      color: 'var(--text-primary)',
+                      marginBottom: '1rem'
+                    }}>
+                      Medical Information
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: '500',
+                          color: 'var(--text-muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          Age
+                        </label>
+                        <div style={{ 
+                          fontSize: '1rem',
+                          color: 'var(--text-primary)',
+                          fontWeight: '500'
+                        }}>
+                          {user.medicalInfo.age || 'Not set'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: '500',
+                          color: 'var(--text-muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          Weight
+                        </label>
+                        <div style={{ 
+                          fontSize: '1rem',
+                          color: 'var(--text-primary)',
+                          fontWeight: '500'
+                        }}>
+                          {user.medicalInfo.weight ? `${user.medicalInfo.weight} kg` : 'Not set'}
+                        </div>
+                      </div>
+                    </div>
+                    {user.medicalInfo.isDonor && (
+                      <div style={{ 
+                        marginTop: '1rem',
+                        padding: '0.75rem',
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        borderRadius: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <span style={{ fontSize: '1.25rem' }}>🩸</span>
+                        <span style={{ 
+                          color: 'var(--success)',
+                          fontWeight: '500'
+                        }}>
+                          Blood Donor
+                          {user.medicalInfo.availableForDonation && ' • Currently Available'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Notification Settings Quick Access */}
+                <div>
+                  <h3 style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '1rem'
+                  }}>
+                    Notifications
+                  </h3>
+                  <div style={{ 
+                    padding: '0.75rem',
+                    background: user.notificationPreferences?.sms ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    borderRadius: '0.5rem',
+                    border: `1px solid ${user.notificationPreferences?.sms ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.25rem' }}>
+                        {user.notificationPreferences?.sms ? '📱' : '🔕'}
+                      </span>
+                      <div>
+                        <div style={{ 
+                          fontWeight: '500',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.9rem'
+                        }}>
+                          SMS Notifications
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.8rem',
+                          color: user.notificationPreferences?.sms ? 'var(--success)' : 'var(--danger)'
+                        }}>
+                          {user.notificationPreferences?.sms ? 'Enabled' : 'Disabled'} • 
+                          {user.notificationPreferences?.urgencyLevels?.length || 0} urgency levels
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => router.push('/settings/notifications')}
+                      style={{
+                        background: 'none',
+                        border: '1px solid var(--border)',
+                        borderRadius: '0.375rem',
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        color: 'var(--text-primary)'
+                      }}
+                    >
+                      Manage
+                    </button>
+                  </div>
+                </div>
+
+                {/* Emergency Contacts */}
+                {user.emergencyContacts && user.emergencyContacts.length > 0 && (
+                  <div>
+                    <h3 style={{ 
+                      fontSize: '1rem', 
+                      fontWeight: '600',
+                      color: 'var(--text-primary)',
+                      marginBottom: '1rem'
+                    }}>
+                      Emergency Contacts
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {user.emergencyContacts.map((contact, index) => (
+                        <div key={index} style={{ 
+                          padding: '0.75rem',
+                          background: 'rgba(239, 68, 68, 0.05)',
+                          borderRadius: '0.5rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <div>
+                            <div style={{ 
+                              fontWeight: '500',
+                              color: 'var(--text-primary)'
+                            }}>
+                              {contact.name}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.875rem',
+                              color: 'var(--text-secondary)'
+                            }}>
+                              {contact.relationship} • {contact.phone}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  🗺️ Location
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  📝 Bio
-                </label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                onClick={() => setEditing(true)}
+                className="btn btn-primary"
+                style={{ 
+                  width: '100%',
+                  marginTop: '2rem',
+                  padding: '0.75rem'
+                }}
               >
-                {loading ? 'Updating...' : 'Update Profile'}
+                Edit Profile
               </button>
-            </form>
-          </div>
-        )}
 
-        {activeTab === 'trips' && (
-          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-            <h2 className="text-xl font-semibold mb-6">🚗 Mes Voyages ({userTrips.length})</h2>
-            {userTrips.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">🚗</div>
-                <h3 className="text-xl font-semibold mb-2">Aucun voyage publié</h3>
+              {/* Password Setup */}
+              {!user.hasPassword && (
+                <div style={{ 
+                  marginTop: '1.5rem', 
+                  padding: '1rem',
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(34, 197, 94, 0.2)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.25rem' }}>💡</span>
+                    <span style={{ fontWeight: '600', color: 'var(--success)' }}>
+                      Set Password to Save SMS Costs
+                    </span>
+                  </div>
+                  <p style={{ 
+                    fontSize: '0.875rem', 
+                    color: 'var(--text-secondary)',
+                    marginBottom: '1rem'
+                  }}>
+                    Avoid SMS verification costs by setting a password for faster login
+                  </p>
+                  <button
+                    onClick={() => setEditing('password')}
+                    className="btn btn-success"
+                    style={{ 
+                      width: '100%',
+                      padding: '0.75rem',
+                      background: 'var(--success)',
+                      color: 'white'
+                    }}
+                  >
+                    Set Password
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : editing === 'password' ? (
+            // Password Setup Mode
+            <PasswordSetup 
+              onComplete={async () => {
+                setEditing(false);
+                await refreshUser();
+              }}
+            />
+          ) : (
+            // Edit Mode
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Basic Info */}
+                <div>
+                  <h3 style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '1rem'
+                  }}>
+                    Basic Information
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div>
+                      <label style={{ 
+                        display: 'block',
+                        fontSize: '0.875rem', 
+                        fontWeight: '500',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Enter your full name"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid var(--border)',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ 
+                        display: 'block',
+                        fontSize: '0.875rem', 
+                        fontWeight: '500',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Email (Optional)
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="Enter your email"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid var(--border)',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <BloodTypeSelector
+                        value={formData.bloodType}
+                        onChange={(bloodType) => setFormData(prev => ({ ...prev, bloodType }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Medical Info */}
+                <div>
+                  <h3 style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '1rem'
+                  }}>
+                    Medical Information
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div>
+                      <label style={{ 
+                        display: 'block',
+                        fontSize: '0.875rem', 
+                        fontWeight: '500',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Age
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.medicalInfo.age || ''}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          medicalInfo: { ...prev.medicalInfo, age: parseInt(e.target.value) || 0 }
+                        }))}
+                        placeholder="25"
+                        min="16"
+                        max="65"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid var(--border)',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ 
+                        display: 'block',
+                        fontSize: '0.875rem', 
+                        fontWeight: '500',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Weight (kg)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.medicalInfo.weight || ''}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          medicalInfo: { ...prev.medicalInfo, weight: parseInt(e.target.value) || 0 }
+                        }))}
+                        placeholder="70"
+                        min="50"
+                        max="200"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid var(--border)',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.medicalInfo.isDonor}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          medicalInfo: { ...prev.medicalInfo, isDonor: e.target.checked }
+                        }))}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--danger)' }}
+                      />
+                      I want to be a blood donor
+                    </label>
+                    {formData.medicalInfo.isDonor && (
+                      <label style={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        color: 'var(--success)',
+                        cursor: 'pointer',
+                        marginLeft: '1.5rem'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.medicalInfo.availableForDonation}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            medicalInfo: { ...prev.medicalInfo, availableForDonation: e.target.checked }
+                          }))}
+                          style={{ width: '18px', height: '18px', accentColor: 'var(--success)' }}
+                        />
+                        I'm currently available for donation
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ 
+                display: 'flex', 
+                gap: '1rem',
+                marginTop: '2rem'
+              }}>
                 <button
-                  onClick={() => router.push('/post-trip')}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+                  onClick={handleCancel}
+                  className="btn btn-outline"
+                  style={{ 
+                    flex: 1,
+                    padding: '0.75rem'
+                  }}
+                  disabled={loading}
                 >
-                  Publier un voyage
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="btn btn-primary"
+                  style={{ 
+                    flex: 1,
+                    padding: '0.75rem'
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : 'Save'}
                 </button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {userTrips.map((trip) => (
-                  <div key={trip._id} className="border border-slate-200 rounded-lg p-4">
-                    <h4 className="font-semibold">{trip.from} → {trip.to}</h4>
-                    <p className="text-sm text-slate-600">
-                      {new Date(trip.departureDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
-        {activeTab === 'requests' && (
-          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-            <h2 className="text-xl font-semibold mb-6">📦 Mes Demandes ({userRequests.length})</h2>
-            {userRequests.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">📦</div>
-                <h3 className="text-xl font-semibold mb-2">Aucune demande publiée</h3>
-                <button
-                  onClick={() => router.push('/post-request')}
-                  className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700"
-                >
-                  Publier une demande
-                </button>
+        {/* Settings */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ 
+            fontSize: '1.125rem', 
+            fontWeight: '600',
+            color: 'var(--text-primary)',
+            marginBottom: '1rem'
+          }}>
+            Settings
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button
+              onClick={() => router.push('/settings/notifications')}
+              className="btn btn-outline"
+              style={{ 
+                width: '100%',
+                padding: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                justifyContent: 'flex-start'
+              }}
+            >
+              <span style={{ fontSize: '1.5rem' }}>📱</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontWeight: '500' }}>Notification Settings</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  {user.notificationPreferences?.sms ? 'SMS enabled' : 'SMS disabled'} • Manage alerts
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {userRequests.map((request) => (
-                  <div key={request._id} className="border border-slate-200 rounded-lg p-4">
-                    <h4 className="font-semibold">{request.from} → {request.to}</h4>
-                    <p className="text-sm text-slate-600">
-                      Deadline: {new Date(request.deadline).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
+            </button>
+            <button
+              onClick={() => router.push('/settings/auth')}
+              className="btn btn-outline"
+              style={{ 
+                width: '100%',
+                padding: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                justifyContent: 'flex-start'
+              }}
+            >
+              <span style={{ fontSize: '1.5rem' }}>🔐</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontWeight: '500' }}>Authentication Settings</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  {user.hasPassword ? 'Password & SMS' : 'SMS only - Set password to save costs'}
+                </div>
               </div>
-            )}
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <button
+            onClick={() => router.push('/blood-requests')}
+            className="btn btn-outline"
+            style={{ 
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <span style={{ fontSize: '1.5rem' }}>🩸</span>
+            <span>Blood Requests</span>
+          </button>
+          <button
+            onClick={() => router.push('/request-blood')}
+            className="btn btn-danger"
+            style={{ 
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'var(--danger)',
+              color: 'white'
+            }}
+          >
+            <span style={{ fontSize: '1.5rem' }}>🚨</span>
+            <span>Emergency Request</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { DataProvider } from '@/contexts/DataContext';
+import { LocationProvider } from '@/contexts/LocationContext';
+import AppLayout from '@/components/Layout/AppLayout';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,10 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TravelConnect",
-  description: "Connect people who want to send items internationally with travelers",
+  title: "BloodConnect",
+  description: "Emergency blood request matching system - connecting donors with patients in need",
   manifest: "/manifest.json",
-  themeColor: "#3B82F6",
+  themeColor: "#DC2626",
 };
 
 export default function RootLayout({
@@ -40,7 +42,11 @@ export default function RootLayout({
         <AuthProvider>
           <DataProvider>
             <ToastProvider>
-              {children}
+              <LocationProvider>
+                <AppLayout>
+                  {children}
+                </AppLayout>
+              </LocationProvider>
             </ToastProvider>
           </DataProvider>
         </AuthProvider>

@@ -7,13 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api-client';
 import LocationSelector from '@/components/Common/LocationSelector';
+import PhotoUpload from '@/components/Common/PhotoUpload';
+import { PhotoUploadResult } from '@/lib/photo-upload';
 
 export default function PostRequestPage() {
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     from: '',
     to: '',
@@ -24,6 +25,7 @@ export default function PostRequestPage() {
     itemType: '',
     description: '',
     reward: '',
+    photos: [] as string[],
   });
 
   const itemTypes = [
@@ -39,11 +41,12 @@ export default function PostRequestPage() {
     'Other'
   ];
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhotoFile(file);
-    }
+  const handlePhotoUpload = (results: PhotoUploadResult[]) => {
+    const photoUrls = results.map(result => result.url);
+    setFormData(prev => ({
+      ...prev,
+      photos: [...prev.photos, ...photoUrls]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,12 +71,10 @@ export default function PostRequestPage() {
 
     setLoading(true);
     try {
-      // For now, we'll skip photo upload and just save the request
-      // In production, you'd want to implement image upload to a service like Cloudinary
       const response = await apiClient.post('/api/requests', {
         ...formData,
         deadline: new Date(formData.deadline),
-        photo: '', // TODO: Implement image upload service
+        photos: formData.photos,
         fromCoords: formData.fromCoords,
         toCoords: formData.toCoords,
         requestType: formData.requestType,
@@ -96,45 +97,91 @@ export default function PostRequestPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center">
-          <div className="text-5xl mb-4">🔒</div>
-          <p className="text-slate-600 font-medium">Please log in to post a request.</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: '80px', 
+            height: '80px', 
+            background: 'var(--accent)', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            margin: '0 auto 1rem',
+            opacity: '0.1'
+          }}></div>
+          <p style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>Please log in to post a request.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <button
-              onClick={() => router.back()}
-              className="mr-4 text-slate-600 hover:text-slate-800 p-2 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              ← Back
-            </button>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">📦</span>
-              </div>
-              <h1 className="text-xl font-semibold text-slate-900">Post a Delivery Request</h1>
+    <div style={{ minHeight: '100vh', background: 'var(--surface)', paddingBottom: '5rem' }}>
+      <header style={{ 
+        background: 'rgba(255, 255, 255, 0.95)', 
+        backdropFilter: 'blur(8px)', 
+        borderBottom: '1px solid var(--border-light)', 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 40
+      }}>
+        <div className="container" style={{ height: '64px', display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={() => router.back()}
+            className="btn btn-outline"
+            style={{ marginRight: '1rem' }}
+          >
+            ← Back
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              background: 'var(--accent)', 
+              borderRadius: '0.5rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center'
+            }}>
+              <div style={{ 
+                width: '16px', 
+                height: '16px', 
+                background: 'white', 
+                borderRadius: '50%', 
+                opacity: '0.9'
+              }}></div>
             </div>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>Post a Delivery Request</h1>
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8 animate-slide-in">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl flex items-center justify-center shadow-lg mb-4 mx-auto">
-              <span className="text-white text-2xl">📦</span>
+      <main className="container" style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="card" style={{ padding: '2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{ 
+                width: '64px', 
+                height: '64px', 
+                background: 'linear-gradient(135deg, var(--accent) 0%, var(--success) 100%)', 
+                borderRadius: '1rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                margin: '0 auto 1rem'
+              }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  background: 'white', 
+                  borderRadius: '50%', 
+                  opacity: '0.9'
+                }}></div>
+              </div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Request a Delivery</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Find travelers who can help deliver your item</p>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Request a Delivery</h2>
-            <p className="text-slate-600">Find travelers who can help deliver your item</p>
-          </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -158,37 +205,40 @@ export default function PostRequestPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-3">
-              🚗 Type de demande *
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+              Type de demande *
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
               {[
                 { 
                   value: 'travel_companion', 
-                  title: '🚗 Compagnon de voyage', 
+                  title: 'Compagnon de voyage', 
                   description: 'Je cherche quelqu\'un avec qui partager un voyage' 
                 },
                 { 
                   value: 'delivery_request', 
-                  title: '📦 Demande de livraison', 
+                  title: 'Demande de livraison', 
                   description: 'J\'ai besoin qu\'on me livre un objet' 
                 }
               ].map((type) => (
-                <label key={type.value} className={`cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 ${
-                  formData.requestType === type.value 
-                    ? 'border-emerald-500 bg-emerald-50' 
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}>
+                <label key={type.value} style={{
+                  cursor: 'pointer',
+                  padding: '1rem',
+                  borderRadius: '0.5rem',
+                  border: `2px solid ${formData.requestType === type.value ? 'var(--accent)' : 'var(--border)'}`,
+                  background: formData.requestType === type.value ? 'rgba(14, 165, 233, 0.05)' : 'var(--background)',
+                  transition: 'all 0.2s ease'
+                }}>
                   <input
                     type="radio"
                     name="requestType"
                     value={type.value}
                     checked={formData.requestType === type.value}
                     onChange={(e) => setFormData(prev => ({ ...prev, requestType: e.target.value }))}
-                    className="sr-only"
+                    style={{ display: 'none' }}
                   />
-                  <div className="text-lg font-semibold mb-1">{type.title}</div>
-                  <div className="text-sm text-slate-600">{type.description}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem', color: 'var(--text-primary)' }}>{type.title}</div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{type.description}</div>
                 </label>
               ))}
             </div>
@@ -281,25 +331,18 @@ export default function PostRequestPage() {
             />
           </div>
 
-          {formData.requestType === 'delivery_request' && (
           <div>
-            <label htmlFor="photo" className="block text-sm font-semibold text-slate-700 mb-2">
-              📷 Photo de l'objet (optionnel)
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+              {formData.requestType === 'delivery_request' ? 'Photos de l\'objet (optionnel)' : 'Photos du voyage (optionnel)'}
             </label>
-            <input
-              type="file"
-              id="photo"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 hover:border-slate-400"
+            <PhotoUpload
+              folder={formData.requestType === 'delivery_request' ? 'items' : 'requests'}
+              onUpload={handlePhotoUpload}
+              maxFiles={5}
+              currentPhotos={formData.photos}
+              disabled={loading}
             />
-            {photoFile && (
-              <div className="mt-3 p-3 bg-slate-50 rounded-lg">
-                <p className="text-sm text-slate-600 font-medium">Selected: {photoFile.name}</p>
-              </div>
-            )}
           </div>
-          )}
 
           <button
             type="submit"
@@ -319,6 +362,7 @@ export default function PostRequestPage() {
             )}
           </button>
           </form>
+          </div>
         </div>
       </main>
     </div>

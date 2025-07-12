@@ -7,6 +7,8 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Trip } from '@/types';
 import { ComponentLoading } from '@/components/Common/Loading';
+import SearchFilters from '@/components/Common/SearchFilters';
+import { useSearch } from '@/hooks/useSearch';
 
 function TripsList() {
   const router = useRouter();
@@ -14,10 +16,20 @@ function TripsList() {
   const { trips: allTrips, loading } = useData();
   const toast = useToast();
 
-  // Filter trips to only show OTHER users' trips
-  const trips = useMemo(() => {
-    return allTrips.filter(trip => trip.userId !== user?.uid);
-  }, [allTrips, user?.uid]);
+  // Use search hook for filtering and search functionality
+  const { 
+    filters, 
+    setFilters, 
+    filteredData: trips, 
+    resultCount, 
+    totalCount, 
+    hasActiveFilters,
+    isSearching 
+  } = useSearch({ 
+    data: allTrips, 
+    type: 'trips', 
+    userId: user?.uid 
+  });
 
   const handleContactTraveler = useCallback((trip: Trip) => {
     if (!user) {
@@ -40,44 +52,139 @@ function TripsList() {
     return <ComponentLoading text="Chargement des voyages..." />;
   }
 
-  if (trips.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-5xl mb-4">✈️</div>
-        <p className="text-slate-500 text-lg mb-4 font-medium">No trips available</p>
-        <p className="text-slate-400">Travelers can post their upcoming trips here</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
+    <div>
+      {/* Search Filters */}
+      <SearchFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        type="trips"
+        disabled={loading || isSearching}
+      />
+
+      {/* Results Summary */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '1rem',
+        padding: '0 0.5rem'
+      }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          {isSearching ? (
+            'Searching...'
+          ) : (
+            <>
+              Showing {resultCount} of {totalCount} trips
+              {hasActiveFilters && ' (filtered)'}
+            </>
+          )}
+        </div>
+        
+        {trips.length > 0 && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {trips.length} result{trips.length !== 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
+
+      {/* Trips List or Empty State */}
+      {trips.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem 0' }}>
+          <div style={{ 
+            width: '80px', 
+            height: '80px', 
+            background: 'var(--surface)', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            margin: '0 auto 1.5rem',
+            border: '2px solid var(--border-light)'
+          }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              background: 'var(--primary)', 
+              borderRadius: '50%', 
+              opacity: '0.2'
+            }}></div>
+          </div>
+          <p style={{ 
+            color: 'var(--text-secondary)', 
+            fontSize: '1.125rem', 
+            fontWeight: '500', 
+            marginBottom: '0.5rem'
+          }}>
+            {hasActiveFilters ? 'No trips match your search' : 'No trips available'}
+          </p>
+          <p style={{ 
+            color: 'var(--text-muted)', 
+            fontSize: '0.875rem'
+          }}>
+            {hasActiveFilters ? 'Try adjusting your search filters' : 'Travelers can post their upcoming trips here'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {trips.map((trip) => (
-        <div key={trip.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow animate-slide-in">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg text-slate-900 mb-1">
+        <div key={trip.id} className="card" style={{ padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ 
+                fontWeight: '600', 
+                fontSize: '1.125rem', 
+                color: 'var(--text-primary)', 
+                marginBottom: '0.5rem'
+              }}>
                 {trip.from} → {trip.to}
               </h3>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-                  📅 {trip.departureDate.toLocaleDateString()} - {trip.arrivalDate.toLocaleDateString()}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  background: 'var(--surface)',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid var(--border-light)'
+                }}>
+                  {trip.departureDate.toLocaleDateString()} - {trip.arrivalDate.toLocaleDateString()}
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-slate-500 mb-1">Capacity</p>
-              <p className="font-semibold text-blue-600 text-lg">{trip.capacity}kg</p>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: 'var(--text-muted)', 
+                marginBottom: '0.25rem'
+              }}>Capacity</p>
+              <p style={{ 
+                fontWeight: '600', 
+                color: 'var(--primary)', 
+                fontSize: '1.125rem'
+              }}>{trip.capacity}kg</p>
             </div>
           </div>
           
-          <div className="mb-4">
-            <p className="text-sm text-slate-600 mb-2 font-medium">Allowed items:</p>
-            <div className="flex flex-wrap gap-2">
+          <div style={{ marginBottom: '1rem' }}>
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: 'var(--text-secondary)', 
+              marginBottom: '0.5rem', 
+              fontWeight: '500'
+            }}>Allowed items:</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {trip.allowedItems.map((item, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"
+                  style={{
+                    padding: '0.25rem 0.75rem',
+                    background: 'var(--primary)',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    borderRadius: '1rem',
+                    fontWeight: '500'
+                  }}
                 >
                   {item}
                 </span>
@@ -86,25 +193,38 @@ function TripsList() {
           </div>
           
           {trip.description && (
-            <p className="text-slate-700 mb-4 bg-slate-50 p-3 rounded-lg italic">
+            <p style={{ 
+              color: 'var(--text-secondary)', 
+              marginBottom: '1rem', 
+              background: 'var(--surface)', 
+              padding: '0.75rem', 
+              borderRadius: '0.5rem', 
+              fontStyle: 'italic',
+              fontSize: '0.875rem'
+            }}>
               "{trip.description}"
             </p>
           )}
           
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-500">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: 'var(--text-muted)'
+            }}>
               Posted {trip.createdAt.toLocaleDateString()}
             </span>
             <button 
               onClick={() => handleContactTraveler(trip)}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center space-x-2"
+              className="btn btn-primary"
+              style={{ fontSize: '0.875rem' }}
             >
-              <span>💬</span>
-              <span>Contact Traveler</span>
+              Contact Traveler
             </button>
           </div>
         </div>
       ))}
+        </div>
+      )}
     </div>
   );
 }

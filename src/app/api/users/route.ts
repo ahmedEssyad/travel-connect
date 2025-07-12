@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  let body: any = null;
   try {
     // Verify authentication
     const { authenticated, user, error } = await requireAuth(request);
@@ -97,7 +98,7 @@ export async function PUT(request: NextRequest) {
 
     await connectDB();
     
-    const body = await request.json();
+    body = await request.json();
     const { uid, ...updateData } = body;
     
     if (!uid) {
@@ -110,10 +111,14 @@ export async function PUT(request: NextRequest) {
     }
     
     // Validate input data
+    console.log('Update data received:', updateData);
     const validation = validateData(userUpdateSchema, updateData);
     if (!validation.success) {
+      console.error('Validation failed:', validation.error);
+      console.error('Data that failed validation:', updateData);
       throw createApiError(validation.error, HttpStatus.BAD_REQUEST, ErrorTypes.VALIDATION_ERROR);
     }
+    console.log('Validation passed:', validation.data);
     
     const updatedUser = await User.findOneAndUpdate(
       { uid },

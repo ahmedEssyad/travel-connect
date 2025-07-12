@@ -74,6 +74,16 @@ export function TravelConnectLoading() {
   );
 }
 
+export function BloodConnectLoading() {
+  return (
+    <Loading 
+      text="Connecting donors and patients..." 
+      size="lg" 
+      fullScreen={true} 
+    />
+  );
+}
+
 export function PageLoading({ text }: { text?: string }) {
   return (
     <Loading 
