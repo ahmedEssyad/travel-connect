@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Home/Navigation';
-import TopBar from '@/components/Layout/TopBar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,7 +16,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const noNavigationPages = ['/login', '/register'];
   
   // Pages that should show navigation (authenticated pages)
-  const navigationPages = ['/', '/matches', '/messages', '/profile', '/post-trip', '/post-request', '/blood-requests', '/request-blood', '/settings'];
+  const navigationPages = ['/', '/messages', '/profile', '/blood-requests', '/request-blood', '/settings', '/chat'];
   
   const showNavigation = user && navigationPages.some(page => 
     pathname === page || (page !== '/' && pathname.startsWith(page))
@@ -29,9 +28,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       paddingBottom: showNavigation ? '80px' : '0',
       position: 'relative'
     }}>
-      {/* Top Navigation Bar */}
-      {showNavigation && <TopBar />}
-      
       {children}
       
       {/* Global Bottom Navigation */}

@@ -26,7 +26,7 @@ export const useNotifications = () => {
   useEffect(() => {
     if (socket && user && connected) {
       // Join user's notification room
-      socket.emit('join', user.uid);
+      socket.emit('join', user.id);
 
       // Listen for notifications
       socket.on('notification', (notification) => {

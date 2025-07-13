@@ -208,15 +208,15 @@ export const bloodRequestSchema = z.object({
     urgentNote: z.string().max(200, 'Urgent note too long').optional()
   }),
   hospital: z.object({
-    name: z.string().min(1, 'Hospital name is required').max(100, 'Hospital name too long'),
-    address: z.string().min(1, 'Hospital address is required').max(200, 'Address too long'),
+    name: z.string().max(100, 'Hospital name too long').optional(),
+    address: z.string().max(200, 'Address too long').optional(),
     coordinates: z.object({
       lat: z.number().min(-90).max(90, 'Invalid latitude'),
       lng: z.number().min(-180).max(180, 'Invalid longitude')
-    }),
-    contactNumber: z.string().min(1, 'Contact number is required'),
+    }).optional(),
+    contactNumber: z.string().optional(),
     department: z.string().max(100, 'Department name too long').optional()
-  }),
+  }).optional(),
   urgencyLevel: z.enum(['critical', 'urgent', 'standard'], { required_error: 'Urgency level is required' }),
   requiredUnits: z.number().min(1, 'At least 1 unit required').max(10, 'Maximum 10 units allowed'),
   deadline: z.string().transform((str) => new Date(str)),

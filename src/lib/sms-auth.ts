@@ -3,15 +3,16 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
+import { getConfig } from './env-validation';
+
+// Get validated environment configuration
+const config = getConfig();
 
 // Twilio client initialization
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+const client = twilio(config.sms.accountSid, config.sms.authToken);
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+const JWT_SECRET = config.auth.jwtSecret;
+const TWILIO_PHONE_NUMBER = config.sms.phoneNumber;
 
 export interface PhoneVerification {
   phoneNumber: string;
@@ -171,11 +172,6 @@ export async function verifyCode(phoneNumber: string, code: string): Promise<{ s
     console.log('Current verification codes:', Array.from(verificationCodes.keys()));
 
     if (!verification) {
-      // Development mode: allow a default code for testing
-      if (process.env.NODE_ENV === 'development' && code === '123456') {
-        console.log('Using development fallback code');
-        return { success: true, message: 'Phone number verified successfully (dev mode)' };
-      }
       
       // Try to read directly from file as last resort
       try {

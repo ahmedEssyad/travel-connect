@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCode, generateAuthToken, formatMauritanianPhone } from '@/lib/sms-auth';
 import { handleApiError, logError, createApiError, ErrorTypes, HttpStatus } from '@/lib/error-handler';
+import { authRateLimit } from '@/lib/rate-limiter';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 
@@ -10,6 +11,12 @@ export async function POST(request: NextRequest) {
 
     if (!phoneNumber || !code) {
       throw createApiError('Phone number and verification code are required', HttpStatus.BAD_REQUEST, ErrorTypes.VALIDATION_ERROR);
+    }
+
+    // Apply rate limiting for authentication attempts
+    const rateLimitResponse = await authRateLimit(request);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     // Verify the code

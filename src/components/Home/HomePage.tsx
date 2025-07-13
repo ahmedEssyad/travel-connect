@@ -58,7 +58,8 @@ export default function HomePage() {
       <section style={{ 
         background: 'linear-gradient(135deg, var(--danger) 0%, #B91C1C 100%)',
         color: 'white',
-        padding: '3rem 0'
+        padding: '3rem 0',
+        paddingTop: 'calc(3rem + 64px)' // Add header height
       }}>
         <div className="container">
           <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>

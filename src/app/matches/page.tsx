@@ -181,7 +181,7 @@ export default function MatchesPage() {
         }
       />
 
-      <main className="container" style={{ padding: '2rem 1rem' }}>
+      <main className="container" style={{ padding: '2rem 1rem', paddingTop: '80px' }}>
         {/* Stats Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
           <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>

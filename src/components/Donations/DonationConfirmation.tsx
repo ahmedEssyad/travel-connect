@@ -109,17 +109,6 @@ function DonationConfirmation({ requestId, onConfirmed }: DonationConfirmationPr
       border: '1px solid var(--border)',
       marginTop: '1rem'
     }}>
-      {/* Debug indicator */}
-      <div style={{
-        background: '#10b981',
-        color: 'white',
-        padding: '0.5rem',
-        borderRadius: '0.25rem',
-        fontSize: '0.75rem',
-        marginBottom: '1rem'
-      }}>
-        🔧 DonationConfirmation Component (ID: {requestId})
-      </div>
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
@@ -154,15 +143,6 @@ function DonationConfirmation({ requestId, onConfirmed }: DonationConfirmationPr
                 Ready to confirm your donation? This helps track your contribution and builds trust in the community.
               </p>
               
-              <div style={{ 
-                background: '#fef3c7', 
-                padding: '0.5rem', 
-                borderRadius: '0.25rem',
-                fontSize: '0.75rem',
-                marginBottom: '1rem'
-              }}>
-                DEBUG: userRole={userRole}, canConfirm={canConfirm ? 'true' : 'false'}, showForm={showConfirmForm ? 'true' : 'false'}
-              </div>
               
               {!showConfirmForm ? (
                 <button

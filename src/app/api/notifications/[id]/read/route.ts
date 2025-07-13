@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { handleApiError, logError, createApiError, ErrorTypes, HttpStatus } from '@/lib/error-handler';
-
-// Same in-memory store as notifications/route.ts
-// In production, this would be a database operation
-const notificationStore = new Map<string, any[]>();
+import connectDB from '@/lib/mongodb';
+import Notification from '@/models/Notification';
 
 export async function PUT(
   request: NextRequest,
@@ -23,29 +21,33 @@ export async function PUT(
       throw createApiError('Notification ID is required', HttpStatus.BAD_REQUEST, ErrorTypes.VALIDATION_ERROR);
     }
 
-    // Get user notifications
-    const userNotifications = notificationStore.get(user.id) || [];
+    await connectDB();
+
+    // Find and update the notification in database
+    const notification = await Notification.findOneAndUpdate(
+      { _id: id, userId: user.id }, // Make sure user owns this notification
+      { read: true, updatedAt: new Date() },
+      { new: true }
+    );
     
-    // Find and update the notification
-    const notificationIndex = userNotifications.findIndex(n => n.id === id);
-    
-    if (notificationIndex === -1) {
+    if (!notification) {
       throw createApiError('Notification not found', HttpStatus.NOT_FOUND, ErrorTypes.NOT_FOUND);
     }
 
-    // Mark as read
-    userNotifications[notificationIndex].read = true;
-    notificationStore.set(user.id, userNotifications);
-
     return NextResponse.json({
       success: true,
-      message: 'Notification marked as read'
+      message: 'Notification marked as read',
+      notification: {
+        id: notification._id.toString(),
+        read: notification.read
+      }
     });
 
   } catch (error) {
     const resolvedParams = await params;
+    const { authenticated, user: authUser } = await requireAuth(request).catch(() => ({ authenticated: false, user: null }));
     logError(error, `PUT /api/notifications/${resolvedParams.id}/read`, { 
-      userId: null,
+      userId: authUser?.id,
       notificationId: resolvedParams.id 
     });
     return handleApiError(error, `PUT /api/notifications/${resolvedParams.id}/read`);

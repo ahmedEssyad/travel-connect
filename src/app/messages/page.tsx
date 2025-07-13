@@ -65,12 +65,61 @@ function MessagesPageContent() {
     return null;
   };
 
+  const discoverChatsFromMessages = async (bloodRequests: any[]) => {
+    try {
+      // Get user's chats from actual messages in the database
+      const response = await apiClient.get(`/api/messages/user-chats`);
+      if (response.ok) {
+        const userChats = await response.json();
+        
+        return userChats.map((chat: any) => {
+          // Try to find the corresponding blood request for context
+          // Check both requester and donors in blood requests
+          let bloodRequest = null;
+          let isRequester = false;
+          
+          for (const req of bloodRequests) {
+            // Check if user is the requester (recipient) - they should see ALL chats about their request
+            if (req.requesterId === user?.id) {
+              bloodRequest = req;
+              isRequester = true;
+              break;
+            }
+            // Check if other user is the requester and current user might be a donor
+            if (req.requesterId === chat.otherUserId) {
+              bloodRequest = req;
+              isRequester = false;
+              break;
+            }
+          }
+          
+          return {
+            chatId: chat.chatId,
+            otherUserId: chat.otherUserId,
+            otherUserName: chat.otherUserName || 'Unknown User',
+            lastMessage: chat.lastMessage || 'No messages yet',
+            lastActivity: chat.lastActivity || new Date().toISOString(),
+            bloodType: bloodRequest?.patientInfo?.bloodType || 'Unknown',
+            hospital: bloodRequest?.hospital?.name || 'Unknown Hospital',
+            urgency: bloodRequest?.urgencyLevel || 'standard',
+            isActive: bloodRequest?.status === 'active' || true, // Default to active for message-based chats
+            requestId: bloodRequest?._id || null,
+            fromMessages: true // Flag to indicate this chat was discovered from messages
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Error discovering chats from messages:', error);
+    }
+    return [];
+  };
+
   const loadChats = async () => {
     try {
       setLoadingChats(true);
       
-      // Get ALL blood requests to find user's chats (not just active ones)
-      const response = await apiClient.get(`/api/blood-requests?limit=100`);
+      // Get blood requests to find user's chats - reduced limit for performance
+      const response = await apiClient.get(`/api/blood-requests?limit=50`);
       
       if (response.ok) {
         const data = await response.json();
@@ -129,23 +178,41 @@ function MessagesPageContent() {
           }
         });
         
-        // Fetch real last messages for each chat
-        const chatsWithMessages = await Promise.all(
-          userChats.map(async (chat) => {
-            const lastMessage = await fetchLastMessage(chat.chatId);
-            return {
-              ...chat,
-              lastMessage: lastMessage?.text || 'No messages yet',
-              lastActivity: lastMessage?.timestamp || chat.lastActivity
-            };
-          })
-        );
+        // Also discover chats from actual messages (not just matched donors)
+        let messageBasedChats: any[] = [];
+        try {
+          messageBasedChats = await discoverChatsFromMessages(data.requests || []);
+        } catch (error) {
+          console.error('Failed to discover chats from messages, continuing with blood request chats only:', error);
+        }
+        
+        // Merge chats from both sources, avoiding duplicates
+        const allChats = [...userChats];
+        messageBasedChats.forEach(msgChat => {
+          if (!allChats.find(existingChat => existingChat.chatId === msgChat.chatId)) {
+            allChats.push(msgChat);
+          }
+        });
+        
+        // The user-chats API already returns last messages, so we don't need individual fetches
+        // Just use the data we already have from messageBasedChats, and add basic info for blood request chats
+        const chatsWithMessages = allChats.map(chat => {
+          // If chat came from messages (has real lastMessage), use it
+          if (chat.fromMessages && chat.lastMessage !== 'No messages yet') {
+            return chat;
+          }
+          // Otherwise use fallback
+          return {
+            ...chat,
+            lastMessage: chat.lastMessage || 'No messages yet'
+          };
+        });
         
         // Sort chats by last activity (most recent first)
         chatsWithMessages.sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
         
         setChats(chatsWithMessages);
-        console.log(`Found ${chatsWithMessages.length} chats for user ${user?.id}`);
+        console.log(`Found ${chatsWithMessages.length} chats for user ${user?.id} (${userChats.length} from blood requests, ${messageBasedChats.length} from messages)`);
       } else {
         const errorText = await response.text();
         console.error('Failed to load chats:', response.status, errorText);
@@ -212,6 +279,7 @@ function MessagesPageContent() {
     <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
       <MobileHeader
         title="Messages"
+        subtitle="Direct communication with donors and requesters"
         rightAction={
           <button
             onClick={() => router.push('/blood-requests')}
@@ -223,15 +291,7 @@ function MessagesPageContent() {
         }
       />
 
-      <main className="container p-4 sm:p-6 md:p-8">
-        <div className="mb-6">
-          <h2 className="text-xl md:text-2xl" style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
-            Your Blood Request Chats
-          </h2>
-          <p className="text-sm md:text-base" style={{ color: 'var(--text-secondary)' }}>
-            Direct communication with donors and requesters
-          </p>
-        </div>
+      <main className="container p-4 sm:p-6 md:p-8" style={{ paddingTop: '80px' }}>
 
         {chats.length === 0 ? (
           <div className="card p-6 md:p-8" style={{ textAlign: 'center' }}>

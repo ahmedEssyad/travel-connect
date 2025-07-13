@@ -43,7 +43,7 @@ export default function AuthSettingsPage() {
         showBack={true}
       />
 
-      <main className="container" style={{ padding: '2rem 1rem' }}>
+      <main className="container" style={{ padding: '2rem 1rem', paddingTop: '80px' }}>
         {/* Current Status */}
         <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ 

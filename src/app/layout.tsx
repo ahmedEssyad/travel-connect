@@ -6,6 +6,7 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { DataProvider } from '@/contexts/DataContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 import AppLayout from '@/components/Layout/AppLayout';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,17 +40,19 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900`}
       >
-        <AuthProvider>
-          <DataProvider>
-            <ToastProvider>
-              <LocationProvider>
-                <AppLayout>
-                  {children}
-                </AppLayout>
-              </LocationProvider>
-            </ToastProvider>
-          </DataProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <DataProvider>
+              <ToastProvider>
+                <LocationProvider>
+                  <AppLayout>
+                    {children}
+                  </AppLayout>
+                </LocationProvider>
+              </ToastProvider>
+            </DataProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

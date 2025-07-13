@@ -9,14 +9,14 @@ export interface IBloodRequest extends Document {
     condition: string;
     urgentNote?: string;
   };
-  hospital: {
-    name: string;
-    address: string;
-    coordinates: {
+  hospital?: {
+    name?: string;
+    address?: string;
+    coordinates?: {
       lat: number;
       lng: number;
     };
-    contactNumber: string;
+    contactNumber?: string;
     department?: string;
   };
   urgencyLevel: 'critical' | 'urgent' | 'standard';
@@ -63,13 +63,13 @@ const BloodRequestSchema: Schema = new Schema({
     urgentNote: { type: String }
   },
   hospital: {
-    name: { type: String, required: true },
-    address: { type: String, required: true },
+    name: { type: String },
+    address: { type: String },
     coordinates: {
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true }
+      lat: { type: Number },
+      lng: { type: Number }
     },
-    contactNumber: { type: String, required: true },
+    contactNumber: { type: String },
     department: { type: String }
   },
   urgencyLevel: { 

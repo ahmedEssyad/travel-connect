@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api-client';
 import { formatTimeAgo } from '@/lib/notifications';
+import useConnectionStatus from '@/hooks/useConnectionStatus';
 
 interface Notification {
   id: string;
@@ -20,6 +21,7 @@ interface Notification {
 export default function NotificationBell() {
   const { user } = useAuth();
   const toast = useToast();
+  const { isOnline, connectionSpeed } = useConnectionStatus();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,16 +29,22 @@ export default function NotificationBell() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
-    if (user) {
+    if (user && isOnline) {
       loadNotifications();
       
-      // Auto-refresh notifications every 30 seconds
-      const interval = setInterval(loadNotifications, 30000);
+      // Adjust polling interval based on connection speed
+      const pollInterval = connectionSpeed === 'slow' ? 60000 : 30000;
+      const interval = setInterval(() => {
+        if (isOnline) loadNotifications();
+      }, pollInterval);
+      
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, isOnline, connectionSpeed]);
 
   const loadNotifications = async () => {
+    if (!isOnline) return;
+    
     try {
       setLoading(true);
       const response = await apiClient.get('/api/notifications');
@@ -47,6 +55,9 @@ export default function NotificationBell() {
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
+      if (!isOnline) {
+        toast.error('No internet connection');
+      }
     } finally {
       setLoading(false);
     }
@@ -54,17 +65,40 @@ export default function NotificationBell() {
 
   const markAsRead = async (notificationId: string) => {
     try {
+      console.log('Marking notification as read:', notificationId);
       const response = await apiClient.put(`/api/notifications/${notificationId}/read`);
       
       if (response.ok) {
+        console.log('Notification marked as read successfully');
         setNotifications(prev => 
           prev.map(n => 
             n.id === notificationId ? { ...n, read: true } : n
           )
         );
+        toast.success('Notification marked as read');
+      } else {
+        console.error('Failed to mark notification as read:', response.status);
+        toast.error('Failed to mark notification as read');
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      toast.error('Error marking notification as read');
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => !n.read);
+      console.log('Marking all notifications as read:', unreadNotifications.length);
+      
+      // Mark all unread notifications as read
+      const promises = unreadNotifications.map(n => markAsRead(n.id));
+      await Promise.all(promises);
+      
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      toast.error('Error marking all notifications as read');
     }
   };
 
@@ -171,17 +205,35 @@ export default function NotificationBell() {
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
               Notifications
             </h3>
-            <button
-              onClick={() => setShowDropdown(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '1.25rem',
-                cursor: 'pointer'
-              }}
-            >
-              ✕
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    color: 'var(--primary)',
+                    fontWeight: '500'
+                  }}
+                  title="Mark all as read"
+                >
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={() => setShowDropdown(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.25rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Loading */}

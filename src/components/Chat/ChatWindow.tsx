@@ -75,7 +75,7 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
     
     pollIntervalRef.current = setInterval(() => {
       fetchMessages(false); // Don't show loading spinner for polling
-    }, 3000); // Poll every 3 seconds
+    }, 10000); // Poll every 10 seconds (reduced from 3)
   }, [fetchMessages]);
 
   const stopPolling = useCallback(() => {

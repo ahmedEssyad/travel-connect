@@ -160,20 +160,24 @@ function BloodRequestCard({ request, onResponseUpdate }: BloodRequestCardProps) 
         </div>
       </div>
 
-      {/* Hospital Info */}
-      <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-100">
-        <div className="text-sm text-primary mb-1">
-          🏥 {request.hospital.name}
-        </div>
-        <div className="text-xs sm:text-sm text-secondary">
-          📍 {request.hospital.address}
-        </div>
-        {request.hospital.department && (
-          <div className="text-xs sm:text-sm text-secondary">
-            🏥 {request.hospital.department}
+      {/* Hospital Info - Only show if hospital info is provided */}
+      {request.hospital?.name && (
+        <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-100">
+          <div className="text-sm text-primary mb-1">
+            🏥 {request.hospital.name}
           </div>
-        )}
-      </div>
+          {request.hospital.address && (
+            <div className="text-xs sm:text-sm text-secondary">
+              📍 {request.hospital.address}
+            </div>
+          )}
+          {request.hospital.department && (
+            <div className="text-xs sm:text-sm text-secondary">
+              🏥 {request.hospital.department}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Condition */}
       <div className="mb-4 text-sm text-primary">

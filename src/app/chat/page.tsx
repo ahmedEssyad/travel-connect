@@ -21,8 +21,6 @@ function ChatPageContent() {
   const chatId = searchParams.get('chatId');
   const requestId = searchParams.get('requestId');
   
-  // Debug URL params
-  console.log('Chat page params:', { chatId, requestId });
 
   useEffect(() => {
     if (chatId && requestId) {
@@ -132,8 +130,8 @@ function ChatPageContent() {
         }
       />
 
-      <main className="container p-4 sm:p-6 md:p-8">
-        <div className="max-w-4xl mx-auto bg-white rounded-lg p-4 sm:p-6 md:p-8" style={{ minHeight: '600px' }}>
+      <main className="container p-4 sm:p-6 md:p-8" style={{ paddingTop: '80px' }}>
+        <div className="max-w-4xl mx-auto bg-white rounded-lg" style={{ minHeight: '600px' }}>
           {loading ? (
             <div className="flex items-center justify-center" style={{ height: '400px' }}>
               <div className="text-center">

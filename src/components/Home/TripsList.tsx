@@ -28,7 +28,7 @@ function TripsList() {
   } = useSearch({ 
     data: allTrips, 
     type: 'trips', 
-    userId: user?.uid 
+    userId: user?.id 
   });
 
   const handleContactTraveler = useCallback((trip: Trip) => {
@@ -38,7 +38,7 @@ function TripsList() {
       return;
     }
 
-    if (trip.userId === user.uid) {
+    if (trip.userId === user.id) {
       toast.info('This is your own trip! You cannot contact yourself.');
       return;
     }

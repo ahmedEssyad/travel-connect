@@ -1,11 +1,36 @@
-// Simple cache for GET requests
+// Enhanced cache for slow connections
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 30000; // 30 seconds
+const CACHE_DURATION = 120000; // 2 minutes for slow connections
+
+// Retry mechanism for slow connections
+async function fetchWithRetry(url: string, options: RequestInit, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      // Add timeout for slow connections
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      if (i === retries) throw error;
+      
+      // Wait before retry (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
 
 export async function authenticatedFetch(url: string, options: RequestInit = {}) {
   const method = options.method || 'GET';
   
-  // Check cache for GET requests
+  // Check cache for GET requests (longer cache for slow connections)
   if (method === 'GET') {
     const cached = cache.get(url);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -32,7 +57,7 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
       headers.set('Content-Type', 'application/json');
     }
     
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       ...options,
       headers,
     });
@@ -46,10 +71,14 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
       throw new Error('Authentication expired');
     }
     
-    // Cache successful GET responses
+    // Cache successful GET responses (longer cache for slow connections)
     if (method === 'GET' && response.ok) {
-      const data = await response.clone().json();
-      cache.set(url, { data, timestamp: Date.now() });
+      try {
+        const data = await response.clone().json();
+        cache.set(url, { data, timestamp: Date.now() });
+      } catch (e) {
+        // Ignore cache errors
+      }
     }
     
     // Invalidate cache for write operations
@@ -65,6 +94,19 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
     return response;
   } catch (error) {
     console.error('Authenticated fetch error:', error);
+    
+    // For GET requests, try to return cached data if available
+    if (method === 'GET') {
+      const cached = cache.get(url);
+      if (cached) {
+        console.log('Using stale cache due to network error');
+        return new Response(JSON.stringify(cached.data), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
     throw error;
   }
 }

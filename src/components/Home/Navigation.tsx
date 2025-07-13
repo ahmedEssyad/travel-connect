@@ -20,7 +20,7 @@ export default function Navigation() {
   // Global notification listener
   useEffect(() => {
     if (socket && user && connected) {
-      socket.emit('join', user.id || user.uid);
+      socket.emit('join', user.id);
       
       socket.on('notification', (notification) => {
         if (notification.type === 'match_request') {
@@ -43,20 +43,19 @@ export default function Navigation() {
     }
   }, [socket, user, connected, toast]);
 
-  // Clear notifications when visiting matches page
+  // Clear notifications when visiting messages page
   useEffect(() => {
-    if (pathname === '/matches') {
+    if (pathname === '/messages') {
       setHasNotifications(false);
     }
   }, [pathname]);
 
   const navItems = [
-    { href: '/', label: 'Home', icon: 'H' },
+    { href: '/', label: 'Home', icon: '🏠' },
     { href: '/blood-requests', label: 'Requests', icon: '🩸' },
     { href: '/request-blood', label: 'Emergency', icon: '🚨' },
-    { href: '/matches', label: 'Matches', icon: 'M', hasNotification: hasNotifications },
-    { href: '/messages', label: 'Messages', icon: 'C' },
-    { href: '/profile', label: 'Profile', icon: 'P' },
+    { href: '/messages', label: 'Messages', icon: '💬', hasNotification: hasNotifications },
+    { href: '/profile', label: 'Profile', icon: '👤' },
   ];
 
   return (

@@ -40,7 +40,6 @@ export async function verifyAuthToken(request: NextRequest): Promise<{ user: any
     return {
       user: {
         id: user._id.toString(),
-        uid: user._id.toString(), // For backward compatibility
         phoneNumber: user.phoneNumber,
         name: user.name,
         email: user.email,

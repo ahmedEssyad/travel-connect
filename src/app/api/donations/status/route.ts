@@ -38,16 +38,18 @@ export async function GET(request: NextRequest) {
         console.log('No donation record, checking blood request:', {
           requesterId: bloodRequest.requesterId,
           currentUserId: user.id,
-          userName: user.name
+          userName: user.name,
+          matchedDonors: bloodRequest.matchedDonors
         });
         
         if (bloodRequest.requesterId.toString() === user.id) {
           userRole = 'recipient';
           canConfirm = false; // Recipient can't confirm until donor confirms first
         } else {
-          // Assume this user is a potential donor
+          // Anyone who is not the recipient can potentially be a donor
+          // They might help through chat even if not formally "matched"
           userRole = 'donor';
-          canConfirm = true; // Donor can start the confirmation process
+          canConfirm = true; // Any potential donor can start the confirmation process
         }
       }
       

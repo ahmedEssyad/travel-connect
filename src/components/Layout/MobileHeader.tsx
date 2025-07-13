@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import NotificationBell from '@/components/Notifications/NotificationBell';
+import useConnectionStatus from '@/hooks/useConnectionStatus';
 
 interface MobileHeaderProps {
   title: string;
@@ -21,6 +22,7 @@ export default function MobileHeader({
   className = '' 
 }: MobileHeaderProps) {
   const router = useRouter();
+  const { isOnline, connectionSpeed } = useConnectionStatus();
   
   const handleBack = () => {
     if (onBack) {
@@ -34,18 +36,21 @@ export default function MobileHeader({
     <header 
       className={className}
       style={{ 
-        background: 'white', 
+        background: 'rgba(255, 255, 255, 0.95)', 
+        backdropFilter: 'blur(8px)',
         borderBottom: '1px solid var(--border-light)',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
-        zIndex: 50
+        left: 0,
+        right: 0,
+        zIndex: 1000
       }}
     >
       <div 
         className="container flex-between" 
         style={{ 
-          height: '56px',
+          height: '64px',
           padding: '0 1rem'
         }}
       >
@@ -143,6 +148,26 @@ export default function MobileHeader({
           flexShrink: 0,
           gap: '0.5rem'
         }}>
+          {/* Connection Status Indicator */}
+          {!isOnline && (
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#ef4444',
+              animation: 'pulse 2s infinite'
+            }} title="Offline" />
+          )}
+          {isOnline && connectionSpeed === 'slow' && (
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#f59e0b',
+              animation: 'pulse 2s infinite'
+            }} title="Slow connection" />
+          )}
+          
           <NotificationBell />
           {rightAction && rightAction}
         </div>
