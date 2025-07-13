@@ -157,32 +157,17 @@ export default function RequestBloodPage() {
         }
       />
 
-      <main className="container" style={{ padding: '2rem 1rem' }}>
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.75rem', 
-            marginBottom: '2rem' 
-          }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: 'var(--danger)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '1.5rem'
-            }}>
+      <main className="container p-4 sm:p-6 md:p-8">
+        <div className="card p-4 sm:p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-6 md:mb-8">
+            <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white text-xl md:text-2xl flex-shrink-0">
               🩸
             </div>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--danger)', margin: 0 }}>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 m-0">
                 Emergency Blood Request
               </h1>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+              <p className="text-sm md:text-base text-secondary m-0">
                 Fill out the details below to notify compatible donors
               </p>
             </div>
@@ -190,11 +175,11 @@ export default function RequestBloodPage() {
 
           <form onSubmit={handleSubmit}>
             {/* Urgency Level */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-secondary mb-2">
                 Urgency Level *
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, urgencyLevel: URGENCY_LEVELS.CRITICAL }))}

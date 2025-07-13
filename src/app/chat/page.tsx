@@ -132,23 +132,11 @@ function ChatPageContent() {
         }
       />
 
-      <main style={{ padding: '1rem' }}>
-        <div style={{ 
-          maxWidth: '800px', 
-          margin: '0 auto',
-          background: 'white',
-          borderRadius: '0.75rem',
-          padding: '1.5rem',
-          minHeight: '600px'
-        }}>
+      <main className="container p-4 sm:p-6 md:p-8">
+        <div className="max-w-4xl mx-auto bg-white rounded-lg p-4 sm:p-6 md:p-8" style={{ minHeight: '600px' }}>
           {loading ? (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              height: '400px'
-            }}>
-              <div style={{ textAlign: 'center' }}>
+            <div className="flex items-center justify-center" style={{ height: '400px' }}>
+              <div className="text-center">
                 <div style={{
                   width: '32px',
                   height: '32px',
@@ -158,7 +146,7 @@ function ChatPageContent() {
                   animation: 'spin 1s linear infinite',
                   margin: '0 auto 1rem'
                 }}></div>
-                <p style={{ color: 'var(--text-secondary)' }}>Loading chat...</p>
+                <p className="text-sm md:text-base text-secondary">Loading chat...</p>
               </div>
             </div>
           ) : (
@@ -182,15 +170,7 @@ function ChatPageContent() {
               
               {/* Show message if no requestId for debugging */}
               {!requestId && (
-                <div style={{ 
-                  marginTop: '1rem', 
-                  padding: '1rem', 
-                  background: '#fef3c7', 
-                  borderRadius: '0.5rem',
-                  fontSize: '0.875rem',
-                  color: '#92400e',
-                  border: '1px solid #fbbf24'
-                }}>
+                <div className="mt-4 p-4 bg-yellow-50 rounded text-sm md:text-base text-yellow-800 border border-yellow-300">
                   💡 <strong>Note:</strong> Donation confirmation is available when you access this chat from a blood request.
                 </div>
               )}

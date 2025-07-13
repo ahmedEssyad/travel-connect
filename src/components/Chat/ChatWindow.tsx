@@ -32,26 +32,58 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetch, setLastFetch] = useState<number>(0);
+  const [syncing, setSyncing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
+      else setSyncing(true);
+      setError(null);
+      
       const response = await apiClient.get(`/api/messages?chatId=${chatId}`);
       
       if (response.ok) {
         const data = await response.json();
-        setMessages(data || []);
+        const newMessages = data || [];
+        
+        // Only update if we have new messages or first load
+        if (newMessages.length !== messages.length || lastFetch === 0) {
+          setMessages(newMessages);
+          setLastFetch(Date.now());
+        }
       } else {
-        console.error('Failed to fetch messages');
+        throw new Error(`Failed to fetch messages: ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
-      toast.error('Failed to load messages');
+      setError(error instanceof Error ? error.message : 'Failed to load messages');
+      if (showLoading) {
+        toast.error('Failed to load messages');
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+      else setSyncing(false);
     }
-  }, [chatId, toast]);
+  }, [chatId, toast, messages.length, lastFetch]);
+
+  const startPolling = useCallback(() => {
+    if (pollIntervalRef.current) return;
+    
+    pollIntervalRef.current = setInterval(() => {
+      fetchMessages(false); // Don't show loading spinner for polling
+    }, 3000); // Poll every 3 seconds
+  }, [fetchMessages]);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,24 +93,28 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
 
+    const messageText = newMessage.trim();
     setSending(true);
+    setNewMessage(''); // Clear input immediately for better UX
+    
     try {
       const response = await apiClient.post('/api/messages', {
         chatId,
-        text: newMessage.trim()
+        text: messageText
       });
 
       if (response.ok) {
         const message = await response.json();
         setMessages(prev => [...prev, message]);
-        setNewMessage('');
+        setLastFetch(Date.now()); // Update last fetch time
       } else {
-        const error = await response.text();
-        toast.error(error || 'Failed to send message');
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Network error. Please try again.');
+      setNewMessage(messageText); // Restore message on error
+      toast.error(error instanceof Error ? error.message : 'Network error. Please try again.');
     } finally {
       setSending(false);
     }
@@ -119,11 +155,23 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
 
   useEffect(() => {
     fetchMessages();
-  }, [fetchMessages]);
+    startPolling();
+    
+    return () => {
+      stopPolling();
+    };
+  }, [fetchMessages, startPolling, stopPolling]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Stop polling when component unmounts or chat changes
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [chatId, stopPolling]);
 
   if (loading) {
     return (
@@ -149,60 +197,81 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
     );
   }
 
+  if (error && messages.length === 0) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        height: '400px'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+          <p style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</p>
+          <button 
+            onClick={() => fetchMessages(true)}
+            className="btn btn-primary"
+            style={{ fontSize: '0.875rem' }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100%',
-      maxHeight: '600px'
-    }}>
+    <div className="flex flex-col h-full" style={{ maxHeight: '600px' }}>
       {/* Chat Header */}
       {requestInfo && (
-        <div style={{ 
-          padding: '1rem',
-          background: 'rgba(239, 68, 68, 0.1)',
-          borderRadius: '0.5rem',
-          marginBottom: '1rem',
-          border: '1px solid rgba(239, 68, 68, 0.2)'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            fontSize: '0.875rem',
-            color: 'var(--text-primary)'
-          }}>
-            <span style={{ fontSize: '1.25rem' }}>🩸</span>
+        <div className="p-4 md:p-6 mb-4 rounded bg-red-50 border border-red-200">
+          
+          <div className="flex items-center gap-2 text-sm md:text-base text-primary">
+            <span className="text-lg md:text-xl">🩸</span>
             <strong>{requestInfo.bloodType}</strong> blood needed for <strong>{requestInfo.patientName}</strong>
+            {syncing && (
+              <div style={{
+                width: '12px',
+                height: '12px',
+                border: '1px solid transparent',
+                borderTop: '1px solid var(--primary)',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                marginLeft: 'auto'
+              }}></div>
+            )}
           </div>
-          <div style={{ 
-            fontSize: '0.75rem',
-            color: 'var(--text-secondary)',
-            marginTop: '0.25rem'
-          }}>
+          <div className="text-xs md:text-sm text-secondary mt-1">
             🏥 {requestInfo.hospital} • {requestInfo.urgency.toUpperCase()}
           </div>
         </div>
       )}
 
+      {/* Connection Status */}
+      {error && messages.length > 0 && (
+        <div className="flex items-center gap-2 p-3 mb-4 text-sm bg-red-50 border border-red-200 rounded" style={{ color: 'var(--danger)' }}>
+          <span>⚠️</span>
+          <span className="flex-1">Connection issues - messages may not update automatically</span>
+          <button 
+            onClick={() => fetchMessages(false)}
+            className="px-2 py-1 text-xs border rounded"
+            style={{ 
+              borderColor: 'var(--danger)',
+              color: 'var(--danger)',
+              background: 'transparent'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
-      <div style={{ 
-        flex: 1, 
-        overflowY: 'auto',
-        padding: '1rem',
-        background: 'var(--surface)',
-        borderRadius: '0.5rem',
-        marginBottom: '1rem',
-        minHeight: '300px'
-      }}>
+      <div className="flex-1 p-4 mb-4 bg-surface rounded overflow-y-auto" style={{ minHeight: '300px' }}>
         {messages.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            padding: '2rem'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>💬</div>
-            <p>Start the conversation...</p>
+          <div className="text-center text-secondary p-8">
+            <div className="text-2xl md:text-3xl mb-4">💬</div>
+            <p className="text-sm md:text-base">Start the conversation...</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -257,29 +326,24 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
       </div>
 
       {/* Message Input */}
-      <form onSubmit={sendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
+      <form onSubmit={sendMessage} className="flex gap-2">
         <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
           disabled={sending}
-          style={{
-            flex: 1,
-            padding: '0.75rem',
-            border: '1px solid var(--border)',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem'
-          }}
+          className="flex-1 input text-base"
         />
         <button
           type="submit"
           disabled={sending || !newMessage.trim()}
-          className="btn btn-primary"
+          className="btn btn-primary touch-target"
           style={{
             padding: '0.75rem 1rem',
             fontSize: '0.875rem',
-            opacity: sending || !newMessage.trim() ? 0.5 : 1
+            opacity: sending || !newMessage.trim() ? 0.5 : 1,
+            minWidth: '60px'
           }}
         >
           {sending ? '⏳' : '📤'}
@@ -287,21 +351,14 @@ function ChatWindow({ chatId, otherUserName, requestInfo }: ChatWindowProps) {
       </form>
 
       {/* Quick Actions */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.5rem',
-        marginTop: '1rem',
-        flexWrap: 'wrap'
-      }}>
+      <div className="flex flex-col sm:flex-row gap-2 mt-4">
         {quickActions.map((action, index) => (
           <button
             key={index}
             onClick={() => setNewMessage(action.text)}
-            className="btn btn-outline"
+            className="btn btn-outline flex-1 text-xs sm:text-sm touch-target"
             style={{ 
-              fontSize: '0.75rem',
-              padding: '0.5rem 0.75rem',
-              flex: 1
+              padding: '0.5rem 0.75rem'
             }}
           >
             {action.label}

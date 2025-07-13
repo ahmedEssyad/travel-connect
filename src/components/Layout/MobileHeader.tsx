@@ -7,6 +7,7 @@ interface MobileHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
+  onBack?: () => void;
   rightAction?: React.ReactNode;
   className?: string;
 }
@@ -16,9 +17,18 @@ export default function MobileHeader({
   subtitle, 
   showBack = true, 
   rightAction,
+  onBack,
   className = '' 
 }: MobileHeaderProps) {
   const router = useRouter();
+  
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      router.back();
+    }
+  };
 
   return (
     <header 
@@ -35,7 +45,7 @@ export default function MobileHeader({
       <div 
         className="container flex-between" 
         style={{ 
-          height: '56px', // Reduced from 64px for mobile
+          height: '56px',
           padding: '0 1rem'
         }}
       >
@@ -43,7 +53,7 @@ export default function MobileHeader({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
           {showBack && (
             <button
-              onClick={() => router.back()}
+              onClick={handleBack}
               style={{
                 minWidth: '44px', // Touch target minimum
                 minHeight: '44px',

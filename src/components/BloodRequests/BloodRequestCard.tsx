@@ -122,59 +122,38 @@ function BloodRequestCard({ request, onResponseUpdate }: BloodRequestCardProps) 
   );
 
   return (
-    <div className="card" style={{ 
-      padding: '1.5rem',
-      marginBottom: '1rem',
-      border: `2px solid ${getUrgencyColor(request.urgencyLevel)}`,
-      borderRadius: '0.75rem',
-      background: 'white'
-    }}>
+    <div 
+      className="card p-4 sm:p-6 mb-4 rounded-lg bg-white"
+      style={{ 
+        border: `2px solid ${getUrgencyColor(request.urgencyLevel)}`
+      }}
+    >
       {/* Header */}
-      <div style={{ 
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '1rem'
-      }}>
-        <div>
-          <h3 style={{ 
-            fontSize: '1.25rem',
-            fontWeight: '700',
-            color: 'var(--text-primary)',
-            margin: '0 0 0.5rem 0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+      
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg md:text-xl font-bold text-primary m-0 mb-2 flex items-center gap-2">
             {getUrgencyIcon(request.urgencyLevel)}
-            {request.patientInfo.bloodType} Blood Needed
+            <span className="truncate">{request.patientInfo.bloodType} Blood Needed</span>
           </h3>
-          <div style={{ 
-            fontSize: '0.875rem',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-secondary">
             <span>👤 {request.patientInfo.name}</span>
-            <span>•</span>
-            <span style={{ 
-              color: getUrgencyColor(request.urgencyLevel),
-              fontWeight: '600',
-              textTransform: 'uppercase'
-            }}>
+            <span className="hidden sm:inline">•</span>
+            <span 
+              className="font-semibold uppercase px-2 py-1 rounded text-xs"
+              style={{ 
+                color: getUrgencyColor(request.urgencyLevel),
+                backgroundColor: `${getUrgencyColor(request.urgencyLevel)}20`
+              }}
+            >
               {request.urgencyLevel}
             </span>
           </div>
         </div>
-        <div style={{ 
-          textAlign: 'right',
-          fontSize: '0.875rem',
-          color: 'var(--text-secondary)'
-        }}>
-          <div>{request.requiredUnits} unit{request.requiredUnits > 1 ? 's' : ''}</div>
+        <div className="text-right text-sm text-secondary flex-shrink-0">
+          <div className="font-medium">{request.requiredUnits} unit{request.requiredUnits > 1 ? 's' : ''}</div>
           {distance && (
-            <div style={{ color: 'var(--primary)', fontWeight: '500' }}>
+            <div className="text-primary font-medium">
               📍 {distance}
             </div>
           )}
@@ -182,92 +161,58 @@ function BloodRequestCard({ request, onResponseUpdate }: BloodRequestCardProps) 
       </div>
 
       {/* Hospital Info */}
-      <div style={{ 
-        marginBottom: '1rem',
-        padding: '0.75rem',
-        background: 'rgba(59, 130, 246, 0.05)',
-        borderRadius: '0.5rem',
-        border: '1px solid rgba(59, 130, 246, 0.1)'
-      }}>
-        <div style={{ 
-          fontSize: '0.875rem',
-          color: 'var(--text-primary)',
-          marginBottom: '0.25rem'
-        }}>
+      <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-100">
+        <div className="text-sm text-primary mb-1">
           🏥 {request.hospital.name}
         </div>
-        <div style={{ 
-          fontSize: '0.8rem',
-          color: 'var(--text-secondary)'
-        }}>
+        <div className="text-xs sm:text-sm text-secondary">
           📍 {request.hospital.address}
         </div>
         {request.hospital.department && (
-          <div style={{ 
-            fontSize: '0.8rem',
-            color: 'var(--text-secondary)'
-          }}>
+          <div className="text-xs sm:text-sm text-secondary">
             🏥 {request.hospital.department}
           </div>
         )}
       </div>
 
       {/* Condition */}
-      <div style={{ 
-        marginBottom: '1rem',
-        fontSize: '0.875rem',
-        color: 'var(--text-primary)'
-      }}>
+      <div className="mb-4 text-sm text-primary">
         💊 {request.patientInfo.condition}
       </div>
 
       {/* Deadline */}
-      <div style={{ 
-        marginBottom: '1.5rem',
-        fontSize: '0.875rem',
-        color: isExpired ? 'var(--danger)' : 'var(--text-secondary)',
-        fontWeight: isExpired ? '600' : '400'
-      }}>
+      <div 
+        className="mb-6 text-sm"
+        style={{ 
+          color: isExpired ? 'var(--danger)' : 'var(--text-secondary)',
+          fontWeight: isExpired ? '600' : '400'
+        }}
+      >
         ⏰ Deadline: {new Date(request.deadline).toLocaleString()}
         {isExpired && ' (EXPIRED)'}
       </div>
 
       {/* Responses */}
       {request.matchedDonors && request.matchedDonors.length > 0 && (
-        <div style={{ 
-          marginBottom: '1rem',
-          fontSize: '0.875rem',
-          color: 'var(--success)',
-          fontWeight: '500'
-        }}>
+        <div className="mb-4 text-sm font-medium" style={{ color: 'var(--success)' }}>
           ✅ {request.matchedDonors.length} donor{request.matchedDonors.length > 1 ? 's' : ''} responded
         </div>
       )}
 
       {/* Action Buttons */}
-      <div style={{ 
-        display: 'flex',
-        gap: '0.75rem',
-        flexWrap: 'wrap'
-      }}>
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         {!isOwnRequest && !isExpired && (
           <>
             {!hasAlreadyResponded ? (
               <button
                 onClick={handleHelp}
                 disabled={helping}
-                className="btn"
+                className="btn touch-target flex-1 text-sm font-semibold"
                 style={{
                   background: 'var(--danger)',
                   color: 'white',
-                  padding: '0.75rem 1.5rem',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '0.5rem',
                   cursor: helping ? 'not-allowed' : 'pointer',
                   opacity: helping ? '0.7' : '1',
-                  flex: 1,
                   minWidth: '120px'
                 }}
               >
@@ -276,17 +221,10 @@ function BloodRequestCard({ request, onResponseUpdate }: BloodRequestCardProps) 
             ) : (
               <button
                 onClick={openChat}
-                className="btn"
+                className="btn touch-target flex-1 text-sm font-semibold"
                 style={{
                   background: 'var(--success)',
                   color: 'white',
-                  padding: '0.75rem 1.5rem',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  flex: 1,
                   minWidth: '120px'
                 }}
               >
@@ -299,29 +237,15 @@ function BloodRequestCard({ request, onResponseUpdate }: BloodRequestCardProps) 
         {!isOwnRequest && (
           <button
             onClick={openChat}
-            className="btn btn-outline"
-            style={{
-              padding: '0.75rem 1rem',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              minWidth: '80px'
-            }}
+            className="btn btn-outline touch-target flex-1 sm:flex-initial text-sm font-medium"
+            style={{ minWidth: '80px' }}
           >
             💬 CHAT
           </button>
         )}
 
         {isOwnRequest && (
-          <div style={{ 
-            flex: 1,
-            textAlign: 'center',
-            padding: '0.75rem',
-            background: 'rgba(59, 130, 246, 0.1)',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            color: 'var(--primary)',
-            fontWeight: '500'
-          }}>
+          <div className="flex-1 text-center p-3 bg-blue-50 rounded text-sm font-medium text-primary">
             📝 Your Request
           </div>
         )}

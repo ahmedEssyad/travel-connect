@@ -176,47 +176,26 @@ export default function BloodRequestsPage() {
         }
       />
 
-      <main style={{ padding: '1rem' }}>
+      <main className="container p-4 sm:p-6 md:p-8">
         {/* Filter Buttons */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '0.5rem', 
-          marginBottom: '1.5rem',
-          padding: '0.25rem',
-          background: 'white',
-          borderRadius: '0.5rem',
-          border: '1px solid var(--border)'
-        }}>
+        <div className="flex flex-col sm:flex-row gap-2 mb-6 p-1 bg-white rounded border">
+        
           <button
             onClick={() => setFilter('all')}
+            className="flex-1 p-3 border-0 rounded text-sm font-medium cursor-pointer transition-all touch-target"
             style={{
-              flex: 1,
-              padding: '0.75rem',
-              border: 'none',
-              borderRadius: '0.25rem',
               background: filter === 'all' ? 'var(--primary)' : 'transparent',
-              color: filter === 'all' ? 'white' : 'var(--text-secondary)',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
+              color: filter === 'all' ? 'white' : 'var(--text-secondary)'
             }}
           >
             All Requests ({bloodRequests.length})
           </button>
           <button
             onClick={() => setFilter('compatible')}
+            className="flex-1 p-3 rounded text-sm font-medium cursor-pointer transition-all touch-target"
             style={{
-              flex: 1,
-              padding: '0.75rem',
-              border: 'none',
-              borderRadius: '0.25rem',
               background: filter === 'compatible' ? 'var(--success)' : 'transparent',
-              color: filter === 'compatible' ? 'white' : 'var(--text-secondary)',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
+              color: filter === 'compatible' ? 'white' : 'var(--text-secondary)'
             }}
           >
             🩸 For My Type ({bloodRequests.filter(req => 
@@ -225,17 +204,10 @@ export default function BloodRequestsPage() {
           </button>
           <button
             onClick={() => setFilter('mine')}
+            className="flex-1 p-3 rounded text-sm font-medium cursor-pointer transition-all touch-target"
             style={{
-              flex: 1,
-              padding: '0.75rem',
-              border: 'none',
-              borderRadius: '0.25rem',
               background: filter === 'mine' ? 'var(--warning)' : 'transparent',
-              color: filter === 'mine' ? 'white' : 'var(--text-secondary)',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
+              color: filter === 'mine' ? 'white' : 'var(--text-secondary)'
             }}
           >
             📝 Mine ({getMyRequestsCount()})
@@ -244,109 +216,64 @@ export default function BloodRequestsPage() {
 
         {/* Quick Stats */}
         {!loading && bloodRequests.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: '0.75rem',
-            marginBottom: '1.5rem'
-          }}>
-            <div style={{
-              background: 'white',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              textAlign: 'center',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--danger)' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="bg-white p-3 sm:p-4 rounded text-center border border-gray-200">
+              <div className="text-lg sm:text-xl font-bold" style={{ color: 'var(--danger)' }}>
                 {bloodRequests.filter(req => req.urgencyLevel === 'critical').length}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Critical</div>
+              <div className="text-xs text-gray-600">Critical</div>
             </div>
-            <div style={{
-              background: 'white',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              textAlign: 'center',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#f59e0b' }}>
+            <div className="bg-white p-3 sm:p-4 rounded text-center border border-gray-200">
+              <div className="text-lg sm:text-xl font-bold" style={{ color: '#f59e0b' }}>
                 {bloodRequests.filter(req => req.urgencyLevel === 'urgent').length}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Urgent</div>
+              <div className="text-xs text-gray-600">Urgent</div>
             </div>
-            <div style={{
-              background: 'white',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              textAlign: 'center',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--primary)' }}>
+            <div className="bg-white p-3 sm:p-4 rounded text-center border border-gray-200">
+              <div className="text-lg sm:text-xl font-bold" style={{ color: 'var(--primary)' }}>
                 {user?.bloodType && bloodRequests.filter(req => 
                   canDonateToPatient(user.bloodType, req.patientInfo.bloodType)
                 ).length || 0}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>For You</div>
+              <div className="text-xs text-gray-600">For You</div>
             </div>
-            <div style={{
-              background: 'white',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              textAlign: 'center',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--success)' }}>
+            <div className="bg-white p-3 sm:p-4 rounded text-center border border-gray-200">
+              <div className="text-lg sm:text-xl font-bold" style={{ color: 'var(--success)' }}>
                 {getMyRequestsCount()}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Your Requests</div>
+              <div className="text-xs text-gray-600">Your Requests</div>
             </div>
           </div>
         )}
 
         {/* Loading State */}
         {loading && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '2rem',
-            color: 'var(--text-secondary)'
-          }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🔄</div>
-            Loading blood requests...
+          <div className="text-center p-6 sm:p-8 text-gray-600">
+            <div className="text-2xl sm:text-3xl mb-2">🔄</div>
+            <div className="text-sm sm:text-base">Loading blood requests...</div>
           </div>
         )}
 
         {/* Empty State */}
         {!loading && filteredRequests.length === 0 && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '3rem 2rem',
-            color: 'var(--text-secondary)'
-          }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🩸</div>
-            <h3 style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: '600', 
-              marginBottom: '0.5rem',
-              color: 'var(--text-primary)'
-            }}>
+          <div className="text-center px-4 py-8 sm:px-6 sm:py-12 text-gray-600">
+            <div className="text-4xl sm:text-5xl md:text-6xl mb-4">🩸</div>
+            <h3 className="text-lg sm:text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
               {filter === 'all' ? 'No active blood requests' : 
                filter === 'compatible' ? 'No compatible requests' : 
                'No requests from you'}
             </h3>
-            <p style={{ marginBottom: '1.5rem' }}>
+            <p className="text-sm sm:text-base mb-6 max-w-md mx-auto">
               {filter === 'all' ? 'There are currently no blood requests in your area.' :
                filter === 'compatible' ? 'No blood requests match your blood type right now.' :
                'You haven\'t created any blood requests yet.'}
             </p>
             <button
               onClick={() => router.push('/request-blood')}
-              className="btn"
+              className="btn px-4 py-3 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold touch-target"
               style={{
                 background: 'var(--danger)',
-                color: 'white',
-                padding: '0.75rem 1.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '600'
+                color: 'white'
               }}
             >
               🚨 Create Emergency Request
@@ -356,7 +283,7 @@ export default function BloodRequestsPage() {
 
         {/* Blood Request Cards */}
         {!loading && filteredRequests.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredRequests.map(request => (
               <BloodRequestCard
                 key={request._id}
@@ -369,32 +296,19 @@ export default function BloodRequestsPage() {
 
         {/* Info Box */}
         {user && !user.bloodType && (
-          <div style={{ 
-            marginTop: '2rem',
-            padding: '1rem',
+          <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-lg border" style={{
             background: 'rgba(59, 130, 246, 0.1)',
-            borderRadius: '0.5rem',
-            border: '1px solid rgba(59, 130, 246, 0.2)'
+            borderColor: 'rgba(59, 130, 246, 0.2)'
           }}>
-            <div style={{ 
-              fontSize: '0.875rem',
-              color: 'var(--primary)',
-              fontWeight: '500',
-              marginBottom: '0.5rem'
-            }}>
+            <div className="text-sm sm:text-base font-medium mb-2" style={{ color: 'var(--primary)' }}>
               💡 Complete your profile
             </div>
-            <p style={{ 
-              fontSize: '0.875rem',
-              color: 'var(--text-secondary)',
-              margin: '0 0 1rem 0'
-            }}>
+            <p className="text-sm sm:text-base mb-4" style={{ color: 'var(--text-secondary)' }}>
               Add your blood type to see compatible requests and help others.
             </p>
             <button
               onClick={() => router.push('/profile')}
-              className="btn btn-primary"
-              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+              className="btn btn-primary text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3 touch-target"
             >
               Update Profile
             </button>
