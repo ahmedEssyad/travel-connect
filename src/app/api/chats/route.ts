@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const chatDetails = await Promise.all(
       chats.map(async (chat) => {
         const chatUserIds = chat._id.split('_');
-        const otherUserId = chatUserIds.find(id => id !== user.id);
+        const otherUserId = chatUserIds.slice(0, 2).find(id => id !== user.id);
         
         // Try to find the associated blood request
         const bloodRequest = await BloodRequest.findOne({

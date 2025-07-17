@@ -1,15 +1,23 @@
-import twilio from 'twilio';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
-import { getConfig } from './env-validation';
+import { validateEnvironment, getConfig } from './env-validation';
 
-// Get validated environment configuration
+// Dynamic import for twilio to reduce bundle size
+let twilioClient: any = null;
+const getTwilioClient = async () => {
+  if (!twilioClient) {
+    const twilio = await import('twilio');
+    const config = getConfig();
+    twilioClient = twilio.default(config.sms.accountSid, config.sms.authToken);
+  }
+  return twilioClient;
+};
+
+// Validate and get environment configuration
+validateEnvironment();
 const config = getConfig();
-
-// Twilio client initialization
-const client = twilio(config.sms.accountSid, config.sms.authToken);
 
 const JWT_SECRET = config.auth.jwtSecret;
 const TWILIO_PHONE_NUMBER = config.sms.phoneNumber;
@@ -134,10 +142,20 @@ export async function sendVerificationCode(phoneNumber: string): Promise<{ succe
     console.log('Stored verification code:', { formattedPhone, verificationCode, expiresAt });
     console.log('Current verification codes after storing:', Array.from(verificationCodes.keys()));
 
-    // Send SMS
+    // Send SMS with dynamic import
+    const client = await getTwilioClient();
+    
+    // Create bilingual welcome message
+    const welcomeMessage = `Munqidh - منقذ
+
+Bienvenue! Votre code de vérification: ${verificationCode}
+مرحباً! رمز التحقق الخاص بك: ${verificationCode}
+
+Valide 10 min / صالح لمدة 10 دقائق`;
+    
     const message = await client.messages.create({
-      body: `Your BloodConnect verification code is: ${verificationCode}. Valid for 10 minutes.`,
-      from: TWILIO_PHONE_NUMBER,
+      body: welcomeMessage,
+      from: 'Munqidh',
       to: formattedPhone
     });
 

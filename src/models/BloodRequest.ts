@@ -159,11 +159,19 @@ BloodRequestSchema.virtual('acceptedDonorsCount').get(function() {
   return this.matchedDonors.filter(donor => donor.status === 'accepted').length;
 });
 
-// Pre-save middleware to update status if deadline passed
+// Pre-save middleware to update status if deadline passed or fulfilled
 BloodRequestSchema.pre('save', function(next) {
   if (this.deadline < new Date() && this.status === 'active') {
     this.status = 'expired';
   }
+  
+  // Auto-fulfill if enough donors have accepted
+  const acceptedDonors = this.matchedDonors.filter(donor => donor.status === 'accepted');
+  if (acceptedDonors.length >= this.requiredUnits && this.status === 'active') {
+    this.status = 'fulfilled';
+    this.fulfilledUnits = acceptedDonors.length;
+  }
+  
   next();
 });
 

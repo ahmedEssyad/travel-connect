@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { isRTL } from '@/lib/i18n';
 
 interface ToastProps {
   message: string;
@@ -11,11 +14,13 @@ interface ToastProps {
 
 export default function Toast({ message, type, onClose, duration = 4000 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const { language } = useLanguage();
+  const isRightToLeft = isRTL(language);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300); // Wait for animation to complete
+      setTimeout(onClose, 300);
     }, duration);
 
     return () => clearTimeout(timer);
@@ -24,58 +29,100 @@ export default function Toast({ message, type, onClose, duration = 4000 }: Toast
   const getTypeStyles = () => {
     switch (type) {
       case 'success':
-        return 'bg-emerald-50 border-emerald-200 text-emerald-800';
+        return 'bg-white border-l-4 border-l-green-500 shadow-lg';
       case 'error':
-        return 'bg-red-50 border-red-200 text-red-800';
+        return 'bg-white border-l-4 border-l-red-500 shadow-lg';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+        return 'bg-white border-l-4 border-l-yellow-500 shadow-lg';
       case 'info':
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-white border-l-4 border-l-blue-500 shadow-lg';
       default:
-        return 'bg-slate-50 border-slate-200 text-slate-800';
+        return 'bg-white border-l-4 border-l-gray-500 shadow-lg';
     }
   };
 
   const getIcon = () => {
+    const iconClass = "h-5 w-5";
     switch (type) {
       case 'success':
-        return '✅';
+        return <CheckCircle className={`${iconClass} text-green-500`} />;
       case 'error':
-        return '❌';
+        return <XCircle className={`${iconClass} text-red-500`} />;
       case 'warning':
-        return '⚠️';
+        return <AlertTriangle className={`${iconClass} text-yellow-500`} />;
       case 'info':
-        return 'ℹ️';
+        return <Info className={`${iconClass} text-blue-500`} />;
       default:
-        return '📝';
+        return <Info className={`${iconClass} text-gray-500`} />;
+    }
+  };
+
+  const getTextColor = () => {
+    switch (type) {
+      case 'success':
+        return 'text-green-800';
+      case 'error':
+        return 'text-red-800';
+      case 'warning':
+        return 'text-yellow-800';
+      case 'info':
+        return 'text-blue-800';
+      default:
+        return 'text-gray-800';
     }
   };
 
   return (
     <div
-      className={`fixed top-4 right-4 z-50 max-w-sm w-full transition-all duration-300 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+      className={`fixed top-4 ${isRightToLeft ? 'left-4' : 'right-4'} z-50 max-w-sm w-full transition-all duration-300 transform ${
+        isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-2 scale-95'
       }`}
     >
-      <div
-        className={`p-4 rounded-lg border shadow-lg ${getTypeStyles()}`}
-      >
-        <div className="flex items-start">
-          <span className="text-lg mr-3 flex-shrink-0">{getIcon()}</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium">{message}</p>
+      <div className={`rounded-xl border border-gray-200 backdrop-blur-sm ${getTypeStyles()}`}>
+        <div className="p-4">
+          <div className={`flex items-start ${isRightToLeft ? 'space-x-reverse space-x-3' : 'space-x-3'}`}>
+            <div className="flex-shrink-0 mt-0.5">
+              {getIcon()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium ${getTextColor()}`}>
+                {message}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsVisible(false);
+                setTimeout(onClose, 300);
+              }}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(onClose, 300);
+        </div>
+        
+        {/* Progress bar */}
+        <div className="h-1 bg-gray-100 rounded-b-xl overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-${duration} ease-linear ${
+              type === 'success' ? 'bg-green-500' :
+              type === 'error' ? 'bg-red-500' :
+              type === 'warning' ? 'bg-yellow-500' :
+              'bg-blue-500'
+            } ${isVisible ? 'w-0' : 'w-full'}`}
+            style={{
+              animation: isVisible ? `shrink ${duration}ms linear` : 'none'
             }}
-            className="ml-2 flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            ✕
-          </button>
+          />
         </div>
       </div>
+      
+      <style jsx>{`
+        @keyframes shrink {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
         const chatId = chat._id;
         const chatUserIds = chatId.split('_');
         
-        // Find the other user ID (not the current user)
-        const otherUserId = chatUserIds.find(id => id !== user.id);
+        // Find the other user ID (not the current user) - only check first two parts for user IDs
+        const otherUserId = chatUserIds.slice(0, 2).find(id => id !== user.id);
         
         if (!otherUserId) {
           return null; // Skip invalid chats

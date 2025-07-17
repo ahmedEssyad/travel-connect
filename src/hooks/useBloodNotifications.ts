@@ -37,7 +37,7 @@ interface DonorResponse {
 }
 
 export function useBloodNotifications() {
-  const { socket, connected } = useSocket();
+  const { socket, connected, error } = useSocket();
   const [activeRequests, setActiveRequests] = useState<BloodRequest[]>([]);
   const [donorResponses, setDonorResponses] = useState<DonorResponse[]>([]);
   
@@ -48,6 +48,15 @@ export function useBloodNotifications() {
   } catch (error) {
     console.warn('Toast context not available:', error);
   }
+
+  // Log WebSocket status for debugging
+  useEffect(() => {
+    if (error) {
+      console.log('Blood notifications: WebSocket not available, using fallback mode');
+    } else if (connected) {
+      console.log('Blood notifications: WebSocket connected, real-time mode active');
+    }
+  }, [connected, error]);
 
   useEffect(() => {
     if (!socket || !connected) return;

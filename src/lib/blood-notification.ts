@@ -1,6 +1,9 @@
 import { Server as SocketServer } from 'socket.io';
 import { BloodType, UrgencyLevel, getCompatibleDonors, getUrgencyRadius } from './blood-types';
 
+// Re-export commonly used functions
+export { getCompatibleDonors } from './blood-types';
+
 interface BloodRequest {
   _id: string;
   requesterId: string;

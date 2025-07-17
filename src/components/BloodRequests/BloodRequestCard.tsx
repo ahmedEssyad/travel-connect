@@ -91,8 +91,8 @@ function BloodRequestCard({ request, onResponseUpdate }: BloodRequestCardProps) 
       toast.error('Please log in to chat');
       return;
     }
-    // Create chat ID (sorted alphabetically for consistency)
-    const chatId = [user.id, request.requesterId].sort().join('_');
+    // Create chat ID including request ID to make each request's chat unique
+    const chatId = [user.id, request.requesterId].sort().join('_') + '_' + request._id;
     router.push(`/chat?chatId=${chatId}&requestId=${request._id}`);
   }, [user, router, toast, request.requesterId, request._id]);
 

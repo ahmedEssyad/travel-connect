@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
-import Request from '@/models/Request';
+import BloodRequest from '@/models/BloodRequest';
 import { requireAuth } from '@/lib/auth-middleware';
 import { requestCreateSchema, requestUpdateSchema, validateData } from '@/lib/validation-schemas';
 import { handleApiError, logError, createApiError, ErrorTypes, HttpStatus } from '@/lib/error-handler';
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // If no filter specified, return all requests (public listings)
     
     // Limit results and select only necessary fields for better performance
-    const requests = await Request.find(query)
+    const requests = await BloodRequest.find(query)
       .sort({ createdAt: -1 })
       .limit(100) // Limit to 100 most recent requests
       .select('-__v') // Exclude version field
@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
       userId: user.uid, // Override with authenticated user's ID
     };
     
-    const deliveryRequest = new Request(requestData);
-    await deliveryRequest.save();
+    const bloodRequest = new BloodRequest(requestData);
+    await bloodRequest.save();
     
-    return NextResponse.json(deliveryRequest, { status: HttpStatus.CREATED });
+    return NextResponse.json(bloodRequest, { status: HttpStatus.CREATED });
   } catch (error) {
     logError(error, 'POST /api/requests', { userId: request.headers.get('x-user-id'), body: JSON.stringify(body || {}) });
     return handleApiError(error, 'POST /api/requests');
@@ -105,17 +105,17 @@ export async function PUT(request: NextRequest) {
     }
     
     // Ensure the user can only update their own requests
-    const deliveryRequest = await Request.findOneAndUpdate(
+    const bloodRequest = await BloodRequest.findOneAndUpdate(
       { _id, userId: user.uid },
       validation.data, 
       { new: true }
     );
     
-    if (!deliveryRequest) {
-      throw createApiError('Request not found or unauthorized', HttpStatus.NOT_FOUND, ErrorTypes.NOT_FOUND);
+    if (!bloodRequest) {
+      throw createApiError('Blood request not found or unauthorized', HttpStatus.NOT_FOUND, ErrorTypes.NOT_FOUND);
     }
     
-    return NextResponse.json(deliveryRequest);
+    return NextResponse.json(bloodRequest);
   } catch (error) {
     logError(error, 'PUT /api/requests', { userId: request.headers.get('x-user-id'), requestId: body?._id });
     return handleApiError(error, 'PUT /api/requests');
@@ -140,13 +140,13 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Ensure the user can only delete their own requests
-    const deliveryRequest = await Request.findOneAndDelete({ _id: id, userId: user.uid });
+    const bloodRequest = await BloodRequest.findOneAndDelete({ _id: id, userId: user.uid });
     
-    if (!deliveryRequest) {
-      throw createApiError('Request not found or unauthorized', HttpStatus.NOT_FOUND, ErrorTypes.NOT_FOUND);
+    if (!bloodRequest) {
+      throw createApiError('Blood request not found or unauthorized', HttpStatus.NOT_FOUND, ErrorTypes.NOT_FOUND);
     }
     
-    return NextResponse.json({ message: 'Request deleted successfully' });
+    return NextResponse.json({ message: 'Blood request deleted successfully' });
   } catch (error) {
     logError(error, 'DELETE /api/requests', { userId: request.headers.get('x-user-id'), requestId: id });
     return handleApiError(error, 'DELETE /api/requests');

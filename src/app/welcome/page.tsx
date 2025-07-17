@@ -5,6 +5,6 @@ export default function WelcomePage() {
 }
 
 export const metadata = {
-  title: 'Welcome - BloodConnect',
-  description: 'Welcome to BloodConnect - Your blood donation community in Mauritania',
+  title: 'Welcome - mounkidh',
+  description: 'Welcome to mounkidh - Your blood donation community in Mauritania',
 };

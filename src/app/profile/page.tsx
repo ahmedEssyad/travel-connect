@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient } from '@/lib/api-client';
 import BloodTypeSelector from '@/components/Profile/BloodTypeSelector';
 import PasswordSetup from '@/components/Auth/PasswordSetup';
@@ -12,6 +13,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<boolean | 'password'>(false);
   const [formData, setFormData] = useState({
@@ -51,7 +53,7 @@ export default function ProfilePage() {
     if (!user) return;
 
     if (!formData.name.trim()) {
-      toast.error('Name is required');
+      toast.error(t('profile.nameRequired'));
       return;
     }
 
@@ -62,14 +64,14 @@ export default function ProfilePage() {
       if (response.ok) {
         await refreshUser();
         setEditing(false);
-        toast.success('Profile updated successfully!');
+        toast.success(t('profile.profileUpdatedSuccessfully'));
       } else {
         const error = await response.text();
-        toast.error(error || 'Failed to update profile');
+        toast.error(error || t('profile.failedToUpdateProfile'));
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error('Network error. Please try again.');
+      toast.error(t('profile.networkError'));
     } finally {
       setLoading(false);
     }
@@ -101,13 +103,14 @@ export default function ProfilePage() {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: 'var(--surface)'
+        background: 'var(--surface)',
+        direction: isRTL ? 'rtl' : 'ltr'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '1.5rem', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-muted)' }}>
-            Access Restricted
+            {t('auth.accessRestricted')}
           </div>
-          <p style={{ color: 'var(--text-secondary)' }}>Please log in to view your profile.</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('profile.pleaseLoginToViewProfile')}</p>
         </div>
       </div>
     );
@@ -117,7 +120,8 @@ export default function ProfilePage() {
     <div style={{ 
       minHeight: '100vh', 
       background: 'var(--surface)',
-      padding: '1rem'
+      padding: '1rem',
+      direction: isRTL ? 'rtl' : 'ltr'
     }}>
       <div style={{ 
         maxWidth: '600px', 
@@ -136,14 +140,14 @@ export default function ProfilePage() {
             color: 'var(--text-primary)',
             margin: '0'
           }}>
-            My Profile
+            {t('profile.title')}
           </h1>
           <button
             onClick={logout}
             className="btn btn-outline"
             style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
           >
-            Logout
+            {t('profile.logout')}
           </button>
         </div>
 
@@ -180,7 +184,7 @@ export default function ProfilePage() {
                 color: 'var(--text-primary)',
                 margin: '0 0 0.25rem 0'
               }}>
-                {user.name || 'Complete your profile'}
+                {user.name || t('profile.completeYourProfile')}
               </h2>
               <p style={{ 
                 color: 'var(--text-secondary)',
@@ -204,7 +208,7 @@ export default function ProfilePage() {
                     color: 'var(--text-primary)',
                     marginBottom: '1rem'
                   }}>
-                    Basic Information
+                    {t('profile.basicInformation')}
                   </h3>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
@@ -215,14 +219,14 @@ export default function ProfilePage() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}>
-                        Name
+                        {t('profile.name')}
                       </label>
                       <div style={{ 
                         fontSize: '1rem',
                         color: 'var(--text-primary)',
                         fontWeight: '500'
                       }}>
-                        {user.name || 'Not set'}
+                        {user.name || t('profile.notSet')}
                       </div>
                     </div>
                     <div>
@@ -233,14 +237,14 @@ export default function ProfilePage() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}>
-                        Blood Type
+                        {t('profile.bloodType')}
                       </label>
                       <div style={{ 
                         fontSize: '1rem',
                         color: user.bloodType ? 'var(--danger)' : 'var(--text-muted)',
                         fontWeight: '600'
                       }}>
-                        {user.bloodType || 'Not set'}
+                        {user.bloodType || t('profile.notSet')}
                       </div>
                     </div>
                   </div>
@@ -255,7 +259,7 @@ export default function ProfilePage() {
                       color: 'var(--text-primary)',
                       marginBottom: '1rem'
                     }}>
-                      Medical Information
+                      {t('profile.medicalInformation')}
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div>
@@ -266,14 +270,14 @@ export default function ProfilePage() {
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em'
                         }}>
-                          Age
+                          {t('profile.age')}
                         </label>
                         <div style={{ 
                           fontSize: '1rem',
                           color: 'var(--text-primary)',
                           fontWeight: '500'
                         }}>
-                          {user.medicalInfo.age || 'Not set'}
+                          {user.medicalInfo.age || t('profile.notSet')}
                         </div>
                       </div>
                       <div>
@@ -284,14 +288,14 @@ export default function ProfilePage() {
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em'
                         }}>
-                          Weight
+                          {t('profile.weight')}
                         </label>
                         <div style={{ 
                           fontSize: '1rem',
                           color: 'var(--text-primary)',
                           fontWeight: '500'
                         }}>
-                          {user.medicalInfo.weight ? `${user.medicalInfo.weight} kg` : 'Not set'}
+                          {user.medicalInfo.weight ? `${user.medicalInfo.weight} kg` : t('profile.notSet')}
                         </div>
                       </div>
                     </div>
@@ -310,8 +314,8 @@ export default function ProfilePage() {
                           color: 'var(--success)',
                           fontWeight: '500'
                         }}>
-                          Blood Donor
-                          {user.medicalInfo.availableForDonation && ' • Currently Available'}
+                          {t('profile.bloodDonor')}
+                          {user.medicalInfo.availableForDonation && ` • ${t('profile.currentlyAvailable')}`}
                         </span>
                       </div>
                     )}
@@ -326,7 +330,7 @@ export default function ProfilePage() {
                     color: 'var(--text-primary)',
                     marginBottom: '1rem'
                   }}>
-                    Notifications
+                    {t('profile.notifications')}
                   </h3>
                   <div style={{ 
                     padding: '0.75rem',
@@ -347,14 +351,14 @@ export default function ProfilePage() {
                           color: 'var(--text-primary)',
                           fontSize: '0.9rem'
                         }}>
-                          SMS Notifications
+                          {t('profile.smsNotifications')}
                         </div>
                         <div style={{ 
                           fontSize: '0.8rem',
                           color: user.notificationPreferences?.sms ? 'var(--success)' : 'var(--danger)'
                         }}>
-                          {user.notificationPreferences?.sms ? 'Enabled' : 'Disabled'} • 
-                          {user.notificationPreferences?.urgencyLevels?.length || 0} urgency levels
+                          {user.notificationPreferences?.sms ? t('profile.enabled') : t('profile.disabled')} • 
+                          {user.notificationPreferences?.urgencyLevels?.length || 0} {t('profile.urgencyLevels')}
                         </div>
                       </div>
                     </div>
@@ -370,7 +374,7 @@ export default function ProfilePage() {
                         color: 'var(--text-primary)'
                       }}
                     >
-                      Manage
+                      {t('profile.manage')}
                     </button>
                   </div>
                 </div>
@@ -384,7 +388,7 @@ export default function ProfilePage() {
                       color: 'var(--text-primary)',
                       marginBottom: '1rem'
                     }}>
-                      Emergency Contacts
+                      {t('profile.emergencyContacts')}
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {user.emergencyContacts.map((contact, index) => (
@@ -426,7 +430,7 @@ export default function ProfilePage() {
                   padding: '0.75rem'
                 }}
               >
-                Edit Profile
+                {t('profile.editProfile')}
               </button>
 
               {/* Password Setup */}
@@ -441,7 +445,7 @@ export default function ProfilePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     <span style={{ fontSize: '1.25rem' }}>💡</span>
                     <span style={{ fontWeight: '600', color: 'var(--success)' }}>
-                      Set Password to Save SMS Costs
+                      {t('profile.setPasswordToSaveCosts')}
                     </span>
                   </div>
                   <p style={{ 
@@ -449,7 +453,7 @@ export default function ProfilePage() {
                     color: 'var(--text-secondary)',
                     marginBottom: '1rem'
                   }}>
-                    Avoid SMS verification costs by setting a password for faster login
+                    {t('profile.setPasswordDesc')}
                   </p>
                   <button
                     onClick={() => setEditing('password')}
@@ -461,7 +465,7 @@ export default function ProfilePage() {
                       color: 'white'
                     }}
                   >
-                    Set Password
+                    {t('profile.setPassword')}
                   </button>
                 </div>
               )}
@@ -486,7 +490,7 @@ export default function ProfilePage() {
                     color: 'var(--text-primary)',
                     marginBottom: '1rem'
                   }}>
-                    Basic Information
+                    {t('profile.basicInformation')}
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
@@ -497,13 +501,13 @@ export default function ProfilePage() {
                         color: 'var(--text-primary)',
                         marginBottom: '0.5rem'
                       }}>
-                        Name *
+                        {t('profile.name')} *
                       </label>
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Enter your full name"
+                        placeholder={t('profile.enterYourFullName')}
                         style={{
                           width: '100%',
                           padding: '0.75rem',
@@ -521,13 +525,13 @@ export default function ProfilePage() {
                         color: 'var(--text-primary)',
                         marginBottom: '0.5rem'
                       }}>
-                        Email (Optional)
+                        {t('profile.emailOptional')}
                       </label>
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="Enter your email"
+                        placeholder={t('profile.enterYourEmail')}
                         style={{
                           width: '100%',
                           padding: '0.75rem',
@@ -594,7 +598,7 @@ export default function ProfilePage() {
                         color: 'var(--text-primary)',
                         marginBottom: '0.5rem'
                       }}>
-                        Weight (kg)
+                        {t('profile.weightKg')}
                       </label>
                       <input
                         type="number"
@@ -635,7 +639,7 @@ export default function ProfilePage() {
                         }))}
                         style={{ width: '18px', height: '18px', accentColor: 'var(--danger)' }}
                       />
-                      I want to be a blood donor
+                      {t('profile.wantToBeBloodDonor')}
                     </label>
                     {formData.medicalInfo.isDonor && (
                       <label style={{ 
@@ -657,7 +661,7 @@ export default function ProfilePage() {
                           }))}
                           style={{ width: '18px', height: '18px', accentColor: 'var(--success)' }}
                         />
-                        I'm currently available for donation
+                        {t('profile.currentlyAvailableForDonation')}
                       </label>
                     )}
                   </div>
@@ -678,7 +682,7 @@ export default function ProfilePage() {
                   }}
                   disabled={loading}
                 >
-                  Cancel
+                  {t('profile.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
@@ -689,7 +693,7 @@ export default function ProfilePage() {
                   }}
                   disabled={loading}
                 >
-                  {loading ? 'Saving...' : 'Save'}
+                  {loading ? t('profile.saving') : t('profile.save')}
                 </button>
               </div>
             </div>
@@ -704,7 +708,7 @@ export default function ProfilePage() {
             color: 'var(--text-primary)',
             marginBottom: '1rem'
           }}>
-            Settings
+            {t('profile.settings')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button
@@ -721,9 +725,9 @@ export default function ProfilePage() {
             >
               <span style={{ fontSize: '1.5rem' }}>📱</span>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontWeight: '500' }}>Notification Settings</div>
+                <div style={{ fontWeight: '500' }}>{t('profile.notificationSettings')}</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  {user.notificationPreferences?.sms ? 'SMS enabled' : 'SMS disabled'} • Manage alerts
+                  {user.notificationPreferences?.sms ? t('profile.smsEnabledManageAlerts') : t('profile.smsDisabledManageAlerts')}
                 </div>
               </div>
             </button>
@@ -741,9 +745,9 @@ export default function ProfilePage() {
             >
               <span style={{ fontSize: '1.5rem' }}>🔐</span>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontWeight: '500' }}>Authentication Settings</div>
+                <div style={{ fontWeight: '500' }}>{t('profile.authenticationSettings')}</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  {user.hasPassword ? 'Password & SMS' : 'SMS only - Set password to save costs'}
+                  {user.hasPassword ? t('profile.passwordAndSms') : t('profile.smsOnlySetPassword')}
                 </div>
               </div>
             </button>
@@ -764,7 +768,7 @@ export default function ProfilePage() {
             }}
           >
             <span style={{ fontSize: '1.5rem' }}>🩸</span>
-            <span>Blood Requests</span>
+            <span>{t('profile.bloodRequests')}</span>
           </button>
           <button
             onClick={() => router.push('/request-blood')}
@@ -780,7 +784,7 @@ export default function ProfilePage() {
             }}
           >
             <span style={{ fontSize: '1.5rem' }}>🚨</span>
-            <span>Emergency Request</span>
+            <span>{t('profile.emergencyRequest')}</span>
           </button>
         </div>
       </div>

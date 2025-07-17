@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
-import DonationOffer from '@/models/DonationOffer';
+import Donation from '@/models/Donation';
 import { requireAuth } from '@/lib/auth-middleware';
 import { donationOfferCreateSchema, donationOfferUpdateSchema, validateData } from '@/lib/validation-schemas';
 import { handleApiError, logError, createApiError, ErrorTypes, HttpStatus } from '@/lib/error-handler';

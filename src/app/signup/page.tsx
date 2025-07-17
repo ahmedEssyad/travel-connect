@@ -5,6 +5,6 @@ export default function SignupPage() {
 }
 
 export const metadata = {
-  title: 'Sign Up - BloodConnect',
-  description: 'Create your BloodConnect account using your phone number',
+  title: 'Sign Up - mounkidh',
+  description: 'Create your mounkidh account using your phone number',
 };

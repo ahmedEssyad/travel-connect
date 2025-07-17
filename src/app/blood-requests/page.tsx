@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useLocation } from '@/contexts/LocationContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient } from '@/lib/api-client';
 import MobileHeader from '@/components/Layout/MobileHeader';
 import BloodRequestCard from '@/components/BloodRequests/BloodRequestCard';
@@ -42,6 +43,7 @@ export default function BloodRequestsPage() {
   const { user } = useAuth();
   const toast = useToast();
   const { location } = useLocation();
+  const { t, isRTL } = useLanguage();
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'compatible' | 'mine'>('all');
@@ -55,7 +57,8 @@ export default function BloodRequestsPage() {
       setLoading(true);
       
       // Check cache first
-      const cacheKey = `blood-requests-${location?.lat}-${location?.lng}`;
+      const locationStr = location ? `${location.lat}-${location.lng}` : 'no-location';
+      const cacheKey = `blood-requests-${locationStr}`;
       const cached = localStorage.getItem(cacheKey);
       const cacheTime = localStorage.getItem(`${cacheKey}-time`);
       
@@ -101,7 +104,8 @@ export default function BloodRequestsPage() {
       console.error('Error fetching blood requests:', error);
       
       // Try to use cache on error
-      const cacheKey = `blood-requests-${location?.lat}-${location?.lng}`;
+      const locationStr = location ? `${location.lat}-${location.lng}` : 'no-location';
+      const cacheKey = `blood-requests-${locationStr}`;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         setBloodRequests(JSON.parse(cached));
@@ -163,11 +167,24 @@ export default function BloodRequestsPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🩸</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Restricted</h2>
-          <p className="text-gray-600">Please log in to view blood requests.</p>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#f9fafb'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🩸</div>
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1f2937',
+            marginBottom: '8px'
+          }}>
+            {t('auth.accessRestricted')}
+          </h2>
+          <p style={{ color: '#6b7280' }}>{t('auth.pleaseLogin')}</p>
         </div>
       </div>
     );
@@ -176,132 +193,320 @@ export default function BloodRequestsPage() {
   const stats = getStats();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#f9fafb',
+      direction: isRTL ? 'rtl' : 'ltr'
+    }}>
       <MobileHeader
-        title="Blood Requests"
-        subtitle={`${filteredRequests.length} active • ${stats.mine} from you`}
+        title={t('bloodRequests.title')}
+        subtitle={`${filteredRequests.length} ${t('bloodRequests.active')} • ${stats.mine} ${t('bloodRequests.fromYou')}`}
         rightAction={
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={() => router.push('/messages')}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              style={{
+                padding: '4px 12px',
+                fontSize: '14px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
             >
-              💬 Messages
+              💬 {t('bloodRequests.messages')}
             </button>
             <button
               onClick={() => router.push('/request-blood')}
-              className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+              style={{
+                padding: '4px 12px',
+                fontSize: '14px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
             >
-              🚨 Request
+              🚨 {t('bloodRequests.request')}
             </button>
           </div>
         }
       />
 
-      <main className="container mx-auto px-4 py-6" style={{ paddingTop: '80px' }}>
-        <div className="max-w-6xl mx-auto">
+      <main style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '24px 16px',
+        paddingTop: '104px'
+      }}>
+        <div style={{ maxWidth: '1536px', margin: '0 auto' }}>
           {/* Filter Tabs */}
-          <div className="bg-white rounded-lg shadow-sm border mb-6">
-            <div className="flex">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex' }}>
               <button
                 onClick={() => setFilter('all')}
-                className={`flex-1 px-4 py-3 text-sm font-medium rounded-l-lg transition-colors ${
-                  filter === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  borderTopLeftRadius: '12px',
+                  borderBottomLeftRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  backgroundColor: filter === 'all' ? '#3b82f6' : 'white',
+                  color: filter === 'all' ? 'white' : '#6b7280'
+                }}
+                onMouseOver={(e) => {
+                  if (filter !== 'all') {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (filter !== 'all') {
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }
+                }}
               >
-                All Requests ({bloodRequests.length})
+                {t('bloodRequests.allRequests')} ({bloodRequests.length})
               </button>
               <button
                 onClick={() => setFilter('compatible')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  filter === 'compatible'
-                    ? 'bg-green-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  backgroundColor: filter === 'compatible' ? '#dc2626' : 'white',
+                  color: filter === 'compatible' ? 'white' : '#6b7280'
+                }}
+                onMouseOver={(e) => {
+                  if (filter !== 'compatible') {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (filter !== 'compatible') {
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }
+                }}
               >
-                🩸 Compatible ({stats.compatible})
+                🩸 {t('bloodRequests.compatible')} ({stats.compatible})
               </button>
               <button
                 onClick={() => setFilter('mine')}
-                className={`flex-1 px-4 py-3 text-sm font-medium rounded-r-lg transition-colors ${
-                  filter === 'mine'
-                    ? 'bg-yellow-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  borderTopRightRadius: '12px',
+                  borderBottomRightRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  backgroundColor: filter === 'mine' ? '#d97706' : 'white',
+                  color: filter === 'mine' ? 'white' : '#6b7280'
+                }}
+                onMouseOver={(e) => {
+                  if (filter !== 'mine') {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (filter !== 'mine') {
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }
+                }}
               >
-                📝 My Requests ({stats.mine})
+                📝 {t('bloodRequests.myRequests')} ({stats.mine})
               </button>
             </div>
           </div>
 
           {/* Quick Stats */}
           {!loading && bloodRequests.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
-                <div className="text-2xl font-bold text-red-600 mb-1">
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb',
+                padding: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#dc2626',
+                  marginBottom: '4px'
+                }}>
                   {stats.critical}
                 </div>
-                <div className="text-sm text-gray-600">Critical</div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>{t('bloodRequest.critical')}</div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
-                <div className="text-2xl font-bold text-yellow-600 mb-1">
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb',
+                padding: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#d97706',
+                  marginBottom: '4px'
+                }}>
                   {stats.urgent}
                 </div>
-                <div className="text-sm text-gray-600">Urgent</div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>{t('bloodRequest.urgent')}</div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600 mb-1">
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb',
+                padding: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#3b82f6',
+                  marginBottom: '4px'
+                }}>
                   {stats.compatible}
                 </div>
-                <div className="text-sm text-gray-600">For You</div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>{t('bloodRequests.forYou')}</div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
-                <div className="text-2xl font-bold text-green-600 mb-1">
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb',
+                padding: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#059669',
+                  marginBottom: '4px'
+                }}>
                   {stats.mine}
                 </div>
-                <div className="text-sm text-gray-600">Your Requests</div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>{t('bloodRequests.yourRequests')}</div>
               </div>
             </div>
           )}
 
           {/* Loading State */}
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <div className="text-center">
-                <div className="w-8 h-8 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading blood requests...</p>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '48px 0'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  border: '4px solid #fecaca',
+                  borderTop: '4px solid #dc2626',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 16px auto'
+                }}></div>
+                <p style={{ color: '#6b7280' }}>{t('bloodRequests.loadingRequests')}</p>
               </div>
             </div>
           )}
 
           {/* Empty State */}
           {!loading && filteredRequests.length === 0 && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <div className="text-6xl mb-4">🩸</div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                {filter === 'all' ? 'No active blood requests' : 
-                 filter === 'compatible' ? 'No compatible requests' : 
-                 'No requests from you'}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '32px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🩸</div>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '8px'
+              }}>
+                {filter === 'all' ? t('bloodRequests.noActiveRequests') : 
+                 filter === 'compatible' ? t('bloodRequests.noCompatibleRequests') : 
+                 t('bloodRequests.noRequestsFromYou')}
               </h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                {filter === 'all' ? 'There are currently no blood requests in your area.' :
-                 filter === 'compatible' ? 'No blood requests match your blood type right now.' :
-                 'You haven\'t created any blood requests yet.'}
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '24px',
+                maxWidth: '448px',
+                margin: '0 auto 24px auto'
+              }}>
+                {filter === 'all' ? t('bloodRequests.noRequestsInArea') :
+                 filter === 'compatible' ? t('bloodRequests.noMatchingBloodType') :
+                 t('bloodRequests.noRequestsCreated')}
               </p>
               <button
                 onClick={() => router.push('/request-blood')}
-                className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                style={{
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
               >
-                🚨 Create Emergency Request
+                🚨 {t('bloodRequests.createEmergencyRequest')}
               </button>
             </div>
           )}
 
           {/* Blood Request Cards */}
           {!loading && filteredRequests.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '24px'
+            }}>
               {filteredRequests.map(request => (
                 <BloodRequestCard
                   key={request._id}
@@ -314,19 +519,46 @@ export default function BloodRequestsPage() {
 
           {/* Profile Completion Prompt */}
           {user && !user.bloodType && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-              <div className="flex items-start gap-4">
-                <div className="text-2xl">💡</div>
+            <div style={{
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '12px',
+              padding: '24px',
+              marginTop: '24px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                <div style={{ fontSize: '24px' }}>💡</div>
                 <div>
-                  <h3 className="font-semibold text-blue-800 mb-2">Complete your profile</h3>
-                  <p className="text-blue-700 mb-4">
-                    Add your blood type to see compatible requests and help others in need.
+                  <h3 style={{
+                    fontWeight: '600',
+                    color: '#1e40af',
+                    marginBottom: '8px',
+                    margin: '0 0 8px 0'
+                  }}>
+                    {t('bloodRequests.completeProfilePrompt')}
+                  </h3>
+                  <p style={{
+                    color: '#1d4ed8',
+                    marginBottom: '16px',
+                    margin: '0 0 16px 0'
+                  }}>
+                    {t('bloodRequests.addBloodTypePrompt')}
                   </p>
                   <button
                     onClick={() => router.push('/profile')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                    style={{
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
                   >
-                    Update Profile
+                    {t('home.updateProfile')}
                   </button>
                 </div>
               </div>

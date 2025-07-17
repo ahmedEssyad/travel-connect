@@ -17,12 +17,13 @@ const nextConfig: NextConfig = {
   // Performance optimizations
   experimental: {
     optimizeCss: true,
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  },
+  // Turbopack configuration (moved out of experimental)
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },

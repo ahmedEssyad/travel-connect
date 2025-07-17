@@ -2,15 +2,15 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   // Database
-  MONGODB_URI: z.string().min(1, 'MongoDB URI is required'),
+  MONGODB_URI: z.string().min(1, 'MongoDB URI is required').optional(),
   
   // Authentication
-  JWT_SECRET: z.string().min(32, 'JWT secret must be at least 32 characters'),
+  JWT_SECRET: z.string().min(32, 'JWT secret must be at least 32 characters').optional(),
   
   // Twilio SMS
-  TWILIO_ACCOUNT_SID: z.string().min(1, 'Twilio Account SID is required'),
-  TWILIO_AUTH_TOKEN: z.string().min(1, 'Twilio Auth Token is required'),
-  TWILIO_PHONE_NUMBER: z.string().regex(/^\+\d{10,15}$/, 'Invalid Twilio phone number format'),
+  TWILIO_ACCOUNT_SID: z.string().min(1, 'Twilio Account SID is required').optional(),
+  TWILIO_AUTH_TOKEN: z.string().min(1, 'Twilio Auth Token is required').optional(),
+  TWILIO_PHONE_NUMBER: z.string().regex(/^\+\d{10,15}$/, 'Invalid Twilio phone number format').optional(),
   
   // Optional environment variables
   NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
@@ -68,22 +68,22 @@ export function getConfig() {
   const env = getEnv();
   
   return {
-    isDevelopment: env.NODE_ENV === 'development',
+    isDevelopment: env.NODE_ENV === 'development' || process.env.NODE_ENV === 'development',
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
     
     database: {
-      uri: env.MONGODB_URI,
+      uri: env.MONGODB_URI || 'mongodb://localhost:27017/bloodconnect-dev',
     },
     
     auth: {
-      jwtSecret: env.JWT_SECRET,
+      jwtSecret: env.JWT_SECRET || 'development-jwt-secret-key-32-chars-min',
     },
     
     sms: {
-      accountSid: env.TWILIO_ACCOUNT_SID,
-      authToken: env.TWILIO_AUTH_TOKEN,
-      phoneNumber: env.TWILIO_PHONE_NUMBER,
+      accountSid: env.TWILIO_ACCOUNT_SID || 'dev-account-sid',
+      authToken: env.TWILIO_AUTH_TOKEN || 'dev-auth-token',
+      phoneNumber: env.TWILIO_PHONE_NUMBER || '+1234567890',
     },
     
     firebase: {

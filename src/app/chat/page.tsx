@@ -7,7 +7,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api-client';
 import MobileHeader from '@/components/Layout/MobileHeader';
 import ChatWindow from '@/components/Chat/ChatWindow';
-import DonationConfirmation from '@/components/Donations/DonationConfirmation';
+import EnhancedDonationWorkflow from '@/components/Donations/EnhancedDonationWorkflow';
 
 function ChatPageContent() {
   const router = useRouter();
@@ -39,10 +39,10 @@ function ChatPageContent() {
       if (response.ok) {
         const data = await response.json();
         setRequestInfo({
-          patientName: data.patientInfo.name,
-          bloodType: data.patientInfo.bloodType,
-          hospital: data.hospital.name,
-          urgency: data.urgencyLevel
+          patientName: data.patientInfo?.name || 'Unknown Patient',
+          bloodType: data.patientInfo?.bloodType || 'Unknown',
+          hospital: data.hospital?.name || 'Hospital not specified',
+          urgency: data.urgencyLevel || 'standard'
         });
 
         // Determine other user name based on who's chatting
@@ -155,12 +155,12 @@ function ChatPageContent() {
                 requestInfo={requestInfo}
               />
               
-              {/* Donation Confirmation Section */}
+              {/* Enhanced Donation Workflow Section */}
               {requestId && (
-                <DonationConfirmation
+                <EnhancedDonationWorkflow
                   requestId={requestId}
-                  onConfirmed={() => {
-                    // Refresh request info after confirmation
+                  onStatusUpdate={() => {
+                    // Refresh request info after status update
                     fetchRequestInfo();
                   }}
                 />
@@ -169,7 +169,7 @@ function ChatPageContent() {
               {/* Show message if no requestId for debugging */}
               {!requestId && (
                 <div className="mt-4 p-4 bg-yellow-50 rounded text-sm md:text-base text-yellow-800 border border-yellow-300">
-                  💡 <strong>Note:</strong> Donation confirmation is available when you access this chat from a blood request.
+                  💡 <strong>Note:</strong> Enhanced donation workflow is available when you access this chat from a blood request.
                 </div>
               )}
             </>

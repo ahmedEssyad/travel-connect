@@ -67,9 +67,10 @@ export async function POST(request: NextRequest) {
           const notification = createBloodRequestNotification(bloodRequest, urgentOnly);
           
           if (notification) {
-            // Send SMS notification
+            // Send SMS notification with requester contact info
             if (notifyPrefs.sms && donor.phoneNumber) {
-              const smsMessage = createSMSMessage(bloodRequest);
+              const requesterPhone = bloodRequest.contactInfo?.requesterPhone;
+              const smsMessage = createSMSMessage(bloodRequest, requesterPhone);
               notificationPromises.push(
                 sendSMSNotification(donor.phoneNumber, smsMessage, notification.urgent)
               );

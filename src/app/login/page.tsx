@@ -5,6 +5,6 @@ export default function LoginPage() {
 }
 
 export const metadata = {
-  title: 'Login - BloodConnect',
-  description: 'Sign in to your BloodConnect account using your phone number',
+  title: 'Login - Munqidh',
+  description: 'Sign in to your Munqidh account using your phone number',
 };

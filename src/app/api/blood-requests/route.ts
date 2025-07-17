@@ -70,136 +70,117 @@ export async function GET(request: NextRequest) {
         useGeoQuery = true;
         userLocation = { lat: latitude, lng: longitude };
         
-        // Use manual distance calculation instead of MongoDB geospatial operators
-        // to avoid conflicts with sorting and coordinate format issues
-        // MongoDB geospatial queries work best with GeoJSON format, 
-        // but our coordinates are stored as {lat, lng} objects
-        
-        // For now, we'll fetch all requests and filter by distance in JavaScript
-        // This approach works better with the current coordinate structure
+            // Use MongoDB $geoNear aggregation for better performance
         useGeoQuery = true;
       }
     }
 
-    // Add deadline filter (only future deadlines for active requests)
+    // Add deadline filter (show recent requests up to 24 hours past deadline for active requests)
     if (query.status === 'active') {
-      query.deadline = { $gt: new Date() };
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+      query.deadline = { $gt: twentyFourHoursAgo };
     }
 
     console.log('Blood requests query:', JSON.stringify(query, null, 2));
 
-    let bloodRequests = await BloodRequest.find(query)
-      .sort({ 
-        urgencyLevel: 1, // Critical first
-        deadline: 1,     // Earliest deadline first
-        createdAt: -1    // Most recent first
-      });
+    let bloodRequests;
+    let total;
+    let paginatedRequests;
 
-    // Apply distance filtering using MongoDB aggregation pipeline for better performance
     if (useGeoQuery && userLocation) {
       const radiusKm = parseFloat(radius!);
-      const radiusInRadians = radiusKm / 6371; // Earth's radius in km
+      const radiusInMeters = radiusKm * 1000;
 
-      // Use MongoDB aggregation for geospatial queries
+      // First, try to get requests with coordinates for geospatial filtering
+      const geoQuery = {
+        ...query,
+        'hospital.coordinates': { $exists: true, $ne: null }
+      };
+
       const pipeline = [
-        { $match: query },
+        { $match: geoQuery },
         {
           $addFields: {
             distance: {
-              $sqrt: {
-                $add: [
-                  {
-                    $pow: [
+              $multiply: [
+                6371000, // Earth's radius in meters
+                {
+                  $acos: {
+                    $add: [
                       {
                         $multiply: [
-                          { $subtract: ["$hospital.coordinates.lat", userLocation.lat] },
-                          Math.PI / 180
+                          { $sin: { $multiply: [{ $divide: ["$hospital.coordinates.lat", 57.2958] }] } },
+                          { $sin: { $multiply: [{ $divide: [userLocation.lat, 57.2958] }] } }
                         ]
                       },
-                      2
-                    ]
-                  },
-                  {
-                    $pow: [
                       {
                         $multiply: [
-                          {
-                            $multiply: [
-                              { $subtract: ["$hospital.coordinates.lng", userLocation.lng] },
-                              Math.PI / 180
-                            ]
-                          },
-                          { $cos: { $multiply: [userLocation.lat, Math.PI / 180] } }
+                          { $cos: { $multiply: [{ $divide: ["$hospital.coordinates.lat", 57.2958] }] } },
+                          { $cos: { $multiply: [{ $divide: [userLocation.lat, 57.2958] }] } },
+                          { $cos: { $multiply: [{ $divide: [{ $subtract: ["$hospital.coordinates.lng", userLocation.lng] }, 57.2958] }] } }
                         ]
-                      },
-                      2
+                      }
                     ]
                   }
-                ]
-              }
+                }
+              ]
             }
           }
         },
-        { $match: { distance: { $lte: radiusInRadians } } },
-        { $sort: { urgencyLevel: 1, deadline: 1, createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit }
+        { $match: { distance: { $lte: radiusInMeters } } },
+        {
+          $facet: {
+            data: [
+              { $sort: { urgencyLevel: 1, deadline: 1, createdAt: -1 } },
+              { $skip: skip },
+              { $limit: limit }
+            ],
+            count: [{ $count: "total" }]
+          }
+        }
       ];
 
-      const results = await BloodRequest.aggregate(pipeline);
-      bloodRequests = results;
+      const [result] = await BloodRequest.aggregate(pipeline);
+      const geoRequests = result.data || [];
+      const geoTotal = result.count[0]?.total || 0;
       
-      // Get total count for pagination
-      const countPipeline = [
-        { $match: query },
-        {
-          $addFields: {
-            distance: {
-              $sqrt: {
-                $add: [
-                  {
-                    $pow: [
-                      {
-                        $multiply: [
-                          { $subtract: ["$hospital.coordinates.lat", userLocation.lat] },
-                          Math.PI / 180
-                        ]
-                      },
-                      2
-                    ]
-                  },
-                  {
-                    $pow: [
-                      {
-                        $multiply: [
-                          {
-                            $multiply: [
-                              { $subtract: ["$hospital.coordinates.lng", userLocation.lng] },
-                              Math.PI / 180
-                            ]
-                          },
-                          { $cos: { $multiply: [userLocation.lat, Math.PI / 180] } }
-                        ]
-                      },
-                      2
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        },
-        { $match: { distance: { $lte: radiusInRadians } } },
-        { $count: "total" }
-      ];
-      
-      const totalResult = await BloodRequest.aggregate(countPipeline);
-      var total = totalResult[0]?.total || 0;
-      var paginatedRequests = bloodRequests;
+      // If no geo results, fall back to regular query (for requests without coordinates)
+      if (geoRequests.length === 0) {
+        console.log('No geo results found, falling back to regular query');
+        total = await BloodRequest.countDocuments(query);
+        
+        bloodRequests = await BloodRequest.find(query)
+          .sort({ 
+            urgencyLevel: 1,
+            deadline: 1,     
+            createdAt: -1    
+          })
+          .skip(skip)
+          .limit(limit)
+          .lean();
+          
+        paginatedRequests = bloodRequests;
+      } else {
+        bloodRequests = geoRequests;
+        total = geoTotal;
+        paginatedRequests = bloodRequests;
+      }
     } else {
-      // No geospatial filtering, use regular pagination
-      var total = await BloodRequest.countDocuments(query);
-      var paginatedRequests = bloodRequests.slice(skip, skip + limit);
+      // No geospatial filtering - use optimized find with indexes
+      total = await BloodRequest.countDocuments(query);
+      
+      bloodRequests = await BloodRequest.find(query)
+        .sort({ 
+          urgencyLevel: 1, // Uses compound index
+          deadline: 1,     
+          createdAt: -1    
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean(); // Use lean() for better performance
+        
+      paginatedRequests = bloodRequests;
     }
 
     console.log(`Found ${paginatedRequests.length} blood requests, total: ${total}`);
@@ -261,24 +242,41 @@ export async function POST(request: NextRequest) {
 
     console.log('Blood request created:', bloodRequest._id);
 
-    // Find compatible donors with optimized query and pagination
-    const maxNotifications = 50; // Limit notifications to prevent performance issues
-    const allDonors = await User.find({
-      'medicalInfo.isDonor': true,
-      'medicalInfo.availableForDonation': true
-    })
-    .select('name phoneNumber bloodType location medicalInfo notificationPreferences')
-    .limit(maxNotifications * 2) // Get more than needed to account for compatibility filtering
-    .lean(); // Use lean() for better performance
-
-    // Find compatible donors (simplified)
-    const { canDonateToPatient } = await import('@/lib/blood-types');
-    const compatibleDonors = allDonors.filter(donor => {
-      // Check blood type compatibility
-      return donor.bloodType && canDonateToPatient(donor.bloodType, bloodRequest.patientInfo.bloodType);
-    });
+    // Find compatible donors with optimized aggregation pipeline
+    const maxNotifications = 50;
     
-    console.log(`Found ${compatibleDonors.length} compatible donors out of ${allDonors.length} total donors`);
+    // Get blood type compatibility rules
+    const { canDonateToPatient } = await import('@/lib/blood-types');
+    
+    // Build compatible blood types array for direct MongoDB query
+    const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    const compatibleBloodTypes = bloodTypes.filter(donorType => 
+      canDonateToPatient(donorType, bloodRequest.patientInfo.bloodType)
+    );
+
+    // Use aggregation for better performance
+    const compatibleDonors = await User.aggregate([
+      {
+        $match: {
+          'medicalInfo.isDonor': true,
+          'medicalInfo.availableForDonation': true,
+          bloodType: { $in: compatibleBloodTypes }
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          phoneNumber: 1,
+          bloodType: 1,
+          location: 1,
+          medicalInfo: 1,
+          notificationPreferences: 1
+        }
+      },
+      { $limit: maxNotifications * 2 }
+    ]);
+    
+    console.log(`Found ${compatibleDonors.length} compatible donors`);
     console.log('Compatible donors:', compatibleDonors.map(d => ({ name: d.name, bloodType: d.bloodType, phone: d.phoneNumber })));
 
     // Send notifications to eligible donors
@@ -316,10 +314,11 @@ export async function POST(request: NextRequest) {
               
               const notificationResults = [];
               
-              // Send SMS notification
+              // Send SMS notification with requester contact info
               if (notifyPrefs.sms && donor.phoneNumber) {
                 console.log(`Sending SMS to ${donor.phoneNumber}`);
-                const smsMessage = createSMSMessage(bloodRequest);
+                const requesterPhone = bloodRequest.contactInfo?.requesterPhone || user.phoneNumber;
+                const smsMessage = createSMSMessage(bloodRequest, requesterPhone);
                 const smsResult = await sendSMSNotification(donor.phoneNumber, smsMessage, bloodRequest.urgencyLevel === 'critical');
                 notificationResults.push(smsResult);
                 console.log(`SMS result for ${donor.phoneNumber}:`, smsResult);

@@ -35,47 +35,41 @@ export interface User {
   updatedAt: Date;
 }
 
-export interface Trip {
-  _id: string;
-  id: string; // For compatibility
-  userId: string;
-  from: string;
-  to: string;
-  fromCoords?: { lat: number; lng: number };
-  toCoords?: { lat: number; lng: number };
-  departureDate: Date;
-  arrivalDate: Date;
-  tripType: 'car_sharing' | 'delivery_service';
-  capacity: number;
-  allowedItems: string[];
-  description?: string;
-  photos?: string[]; // Trip photos
-  status?: 'active' | 'completed' | 'cancelled';
-  createdAt: Date;
-}
-
 export interface Request {
   _id: string;
   id: string; // For compatibility
   userId: string;
-  from: string;
-  to: string;
-  fromCoords?: { lat: number; lng: number };
-  toCoords?: { lat: number; lng: number };
-  deadline: Date;
-  requestType: 'travel_companion' | 'delivery_request';
-  itemType?: string;
+  title: string;
   description?: string;
-  reward?: string;
-  photo?: string;
-  photos?: string[]; // Multiple item photos
+  bloodType: string;
+  urgencyLevel: 'critical' | 'urgent' | 'standard';
+  patientInfo: {
+    name: string;
+    age: number;
+    condition: string;
+  };
+  location: {
+    lat: number;
+    lng: number;
+    address?: string;
+  };
+  hospital?: {
+    name?: string;
+    address?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+  contactInfo: {
+    phone: string;
+    alternatePhone?: string;
+  };
+  deadline: Date;
   status?: 'active' | 'matched' | 'completed' | 'cancelled';
   createdAt: Date;
 }
 
 export interface Match {
   id: string;
-  tripId: string;
+  donorId: string;
   requestId: string;
   status: 'pending' | 'accepted' | 'completed' | 'cancelled';
   createdAt: Date;

@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from '@/contexts/LocationContext';
 import { useBloodNotifications } from '@/hooks/useBloodNotifications';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
-import MobileHeader from '@/components/Layout/MobileHeader';
-import LocationStatus from '@/components/Common/LocationStatus';
+import { Heart, Users, MapPin, Bell, UserCheck, Settings, Plus } from 'lucide-react';
 
 export default function HomePage() {
   const { user, logout } = useAuth();
   const { location } = useLocation();
   const { activeRequests } = useBloodNotifications();
+  const { t, isRTL } = useLanguage();
   const [stats, setStats] = useState({
     totalDonors: 0,
     activeRequests: 0,
@@ -19,7 +20,6 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    // Mock stats for now - in production, fetch from API
     setStats({
       totalDonors: 1247,
       activeRequests: activeRequests.length,
@@ -28,154 +28,279 @@ export default function HomePage() {
   }, [activeRequests]);
 
   return (
-    <div style={{ background: 'var(--surface)', minHeight: '100vh' }}>
-      {/* Mobile-Optimized Header */}
-      <MobileHeader
-        title="BloodConnect"
-        subtitle={user?.name ? `Welcome, ${user.name.split(' ')[0]}` : undefined}
-        showBack={false}
-        rightAction={
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link 
-              href="/profile" 
-              className="btn btn-secondary"
-              style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#f9fafb',
+      margin: 0,
+      padding: 0,
+      direction: isRTL ? 'rtl' : 'ltr'
+    }}>
+      {/* Header */}
+      <header style={{ 
+        backgroundColor: 'white', 
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
+        borderBottom: '1px solid #e5e7eb',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
+      }}>
+        <div style={{ 
+          maxWidth: '1200px', 
+          margin: '0 auto', 
+          padding: '0 1rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          height: '64px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              backgroundColor: '#dc2626', 
+              padding: '8px', 
+              borderRadius: '12px' 
+            }}>
+              <Heart style={{ width: '24px', height: '24px', color: 'white' }} />
+            </div>
+            <div>
+              <h1 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                color: '#111827',
+                margin: 0
+              }}>
+                {t('app.name')}
+              </h1>
+              {user?.name && (
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: '#6b7280',
+                  margin: 0
+                }}>
+                  {t('home.welcome')}, {user.name.split(' ')[0]}
+                </p>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link
+              href="/settings"
+              style={{
+                padding: '8px',
+                color: '#6b7280',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.2s'
+              }}
             >
-              Profile
+              <Settings style={{ width: '20px', height: '20px' }} />
             </Link>
-            <button 
-              onClick={logout} 
-              className="btn btn-outline"
-              style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
+            <button
+              onClick={logout}
+              style={{
+                color: '#6b7280',
+                fontSize: '14px',
+                fontWeight: '500',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
             >
-              Logout
+              {t('auth.logout')}
             </button>
           </div>
-        }
-      />
+        </div>
+      </header>
 
-      {/* Hero Section */}
+      {/* Quick Actions */}
       <section style={{ 
-        background: 'linear-gradient(135deg, var(--danger) 0%, #B91C1C 100%)',
+        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
         color: 'white',
-        padding: '3rem 0',
-        paddingTop: 'calc(3rem + 64px)' // Add header height
+        padding: '48px 16px'
       }}>
-        <div className="container">
-          <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ 
+          maxWidth: '1200px', 
+          margin: '0 auto'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <h2 style={{ 
-              fontSize: '2.25rem', 
+              fontSize: '30px', 
               fontWeight: '700', 
-              marginBottom: '1rem',
-              lineHeight: '1.2'
+              marginBottom: '16px',
+              margin: 0
             }}>
-              Save Lives. Share Blood.
+              {t('home.quickActions')}
             </h2>
             <p style={{ 
-              fontSize: '1.125rem', 
-              opacity: '0.9', 
-              marginBottom: '2rem',
-              lineHeight: '1.6'
+              color: 'rgba(255,255,255,0.9)', 
+              fontSize: '18px',
+              margin: 0
             }}>
-              Emergency blood request matching system - connecting donors with patients in need
+              {t('home.howCanWeHelp')}
             </p>
+          </div>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+            gap: '24px', 
+            maxWidth: '800px', 
+            margin: '0 auto' 
+          }}>
+            <Link
+              href="/request-blood"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center',
+                textDecoration: 'none',
+                color: 'white',
+                transition: 'all 0.3s ease',
+                display: 'block'
+              }}
+            >
+              <div style={{ 
+                background: '#ef4444', 
+                padding: '12px', 
+                borderRadius: '50%', 
+                width: '64px', 
+                height: '64px', 
+                margin: '0 auto 16px auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Bell style={{ width: '32px', height: '32px', color: 'white' }} />
+              </div>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600', 
+                marginBottom: '8px',
+                margin: '0 0 8px 0'
+              }}>
+                {t('home.requestBlood')}
+              </h3>
+              <p style={{ 
+                color: 'rgba(255,255,255,0.8)', 
+                fontSize: '14px',
+                margin: 0
+              }}>
+                {t('home.requestBloodDesc')}
+              </p>
+            </Link>
             
-            {/* Action Buttons */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-              gap: '1rem',
-              maxWidth: '400px',
-              margin: '0 auto'
-            }}>
-              <Link 
-                href="/request-blood"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  textDecoration: 'none',
-                  color: 'white',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'center'
-                }}
-                className="card"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                }}
-              >
-                <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                  🚨 Emergency Request
-                </div>
-                <div style={{ fontSize: '0.875rem', opacity: '0.8' }}>
-                  Need blood urgently?
-                </div>
-              </Link>
-              
-              <Link 
-                href="/blood-requests"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  textDecoration: 'none',
-                  color: 'white',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'center'
-                }}
-                className="card"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                }}
-              >
-                <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                  🩸 Donate Blood
-                </div>
-                <div style={{ fontSize: '0.875rem', opacity: '0.8' }}>
-                  Help save lives
-                </div>
-              </Link>
-            </div>
+            <Link
+              href="/blood-requests"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center',
+                textDecoration: 'none',
+                color: 'white',
+                transition: 'all 0.3s ease',
+                display: 'block'
+              }}
+            >
+              <div style={{ 
+                background: '#ef4444', 
+                padding: '12px', 
+                borderRadius: '50%', 
+                width: '64px', 
+                height: '64px', 
+                margin: '0 auto 16px auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Heart style={{ width: '32px', height: '32px', color: 'white' }} />
+              </div>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600', 
+                marginBottom: '8px',
+                margin: '0 0 8px 0'
+              }}>
+                {t('home.donateBlood')}
+              </h3>
+              <p style={{ 
+                color: 'rgba(255,255,255,0.8)', 
+                fontSize: '14px',
+                margin: 0
+              }}>
+                {t('home.donateBloodDesc')}
+              </p>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section style={{ padding: '2rem 1rem', background: 'white' }}>
-        <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--danger)', marginBottom: '0.5rem' }}>
+      <section style={{ backgroundColor: 'white', padding: '48px 16px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '32px' 
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '36px', 
+                fontWeight: '700', 
+                color: '#dc2626', 
+                marginBottom: '8px' 
+              }}>
                 {stats.totalDonors.toLocaleString()}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Registered Donors
+              <div style={{ 
+                color: '#6b7280', 
+                fontWeight: '500',
+                fontSize: '16px'
+              }}>
+                {t('home.registeredDonors')}
               </div>
             </div>
-            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--warning)', marginBottom: '0.5rem' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '36px', 
+                fontWeight: '700', 
+                color: '#d97706', 
+                marginBottom: '8px' 
+              }}>
                 {stats.activeRequests}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Active Requests
+              <div style={{ 
+                color: '#6b7280', 
+                fontWeight: '500',
+                fontSize: '16px'
+              }}>
+                {t('home.activeRequests')}
               </div>
             </div>
-            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.5rem' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '36px', 
+                fontWeight: '700', 
+                color: '#059669', 
+                marginBottom: '8px' 
+              }}>
                 {stats.successfulMatches}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Lives Saved
+              <div style={{ 
+                color: '#6b7280', 
+                fontWeight: '500',
+                fontSize: '16px'
+              }}>
+                {t('home.livesSaved')}
               </div>
             </div>
           </div>
@@ -184,52 +309,90 @@ export default function HomePage() {
 
       {/* Emergency Notifications */}
       {activeRequests.length > 0 && (
-        <section style={{ padding: '2rem 1rem', background: 'rgba(220, 38, 38, 0.05)' }}>
-          <div className="container">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ fontSize: '1.5rem' }}>🚨</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--danger)' }}>
-                Emergency Blood Requests
+        <section style={{ backgroundColor: '#fef2f2', padding: '32px 16px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              marginBottom: '24px' 
+            }}>
+              <Bell style={{ width: '24px', height: '24px', color: '#dc2626' }} />
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600', 
+                color: '#991b1b',
+                margin: 0
+              }}>
+                {t('home.emergencyBloodRequests')}
               </h3>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {activeRequests.slice(0, 3).map((request, index) => (
-                <div
-                  key={index}
-                  style={{
-                    background: 'white',
-                    padding: '1rem',
-                    borderRadius: '0.5rem',
-                    border: '1px solid var(--danger)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+                <div 
+                  key={index} 
+                  style={{ 
+                    backgroundColor: 'white', 
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #fecaca', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: '600', color: 'var(--danger)' }}>
-                      {request.urgency.toUpperCase()}: {request.bloodType} needed
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center' 
+                  }}>
+                    <div>
+                      <div style={{ 
+                        fontWeight: '600', 
+                        color: '#b91c1c',
+                        marginBottom: '4px'
+                      }}>
+                        {request.urgency.toUpperCase()}: {request.bloodType} needed
+                      </div>
+                      <div style={{ 
+                        fontSize: '14px', 
+                        color: '#6b7280' 
+                      }}>
+                        {request.hospital.name} • {request.condition}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                      {request.hospital.name} • {request.condition}
-                    </div>
+                    <Link
+                      href="/blood-requests"
+                      style={{
+                        backgroundColor: '#dc2626',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        textDecoration: 'none',
+                        transition: 'background-color 0.2s'
+                      }}
+                    >
+                      Respond
+                    </Link>
                   </div>
-                  <Link
-                    href="/blood-requests"
-                    className="btn"
-                    style={{ background: 'var(--danger)', color: 'white', fontSize: '0.75rem' }}
-                  >
-                    Respond
-                  </Link>
                 </div>
               ))}
             </div>
+            
             {activeRequests.length > 3 && (
-              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <Link
                   href="/blood-requests"
-                  className="btn btn-outline"
-                  style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                  style={{
+                    color: '#dc2626',
+                    border: '1px solid #dc2626',
+                    padding: '8px 24px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    transition: 'background-color 0.2s'
+                  }}
                 >
                   View All {activeRequests.length} Requests
                 </Link>
@@ -239,73 +402,112 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* How It Works */}
-      <section style={{ padding: '3rem 1rem', background: 'var(--surface)' }}>
-        <div className="container">
-          <h3 style={{ fontSize: '1.5rem', fontWeight: '600', textAlign: 'center', marginBottom: '2rem' }}>
-            How BloodConnect Works
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
-              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                1. Register as Donor
-              </h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Sign up and add your blood type, medical info, and contact details
-              </p>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
-              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                2. Get Notifications
-              </h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Receive real-time alerts when compatible blood is needed nearby
-              </p>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🩸</div>
-              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                3. Save Lives
-              </h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Respond to urgent requests and help save lives in your community
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* User Profile Status */}
       {user && (
-        <section style={{ padding: '2rem 1rem', background: 'white' }}>
-          <div className="container">
-            <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>
-                Your Donor Status
-              </h3>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    Blood Type: <strong>{user.bloodType || 'Not set'}</strong>
+        <section style={{ backgroundColor: 'white', padding: '32px 0' }}>
+          <div style={{ 
+            maxWidth: '1200px', 
+            margin: '0 auto', 
+            padding: '0 16px' 
+          }}>
+            <div style={{ 
+              backgroundColor: '#f9fafb', 
+              borderRadius: '12px', 
+              padding: '24px' 
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    backgroundColor: '#fecaca', 
+                    padding: '12px', 
+                    borderRadius: '50%' 
+                  }}>
+                    <UserCheck style={{ width: '24px', height: '24px', color: '#dc2626' }} />
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    Status: <strong>{user.bloodType ? 'Active Donor' : 'Profile Incomplete'}</strong>
+                  <div>
+                    <h3 style={{ 
+                      fontSize: '18px', 
+                      fontWeight: '600', 
+                      color: '#111827',
+                      margin: '0 0 8px 0'
+                    }}>
+                      {t('home.yourDonorProfile')}
+                    </h3>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#6b7280',
+                      margin: '0 0 4px 0'
+                    }}>
+                      {t('home.bloodType')}: <span style={{ fontWeight: '500' }}>{user.bloodType || t('validation.required')}</span>
+                    </div>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#6b7280',
+                      margin: 0
+                    }}>
+                      {t('home.status')}: <span style={{ 
+                        fontWeight: '500',
+                        color: user.bloodType ? '#059669' : '#d97706'
+                      }}>
+                        {user.bloodType ? t('home.activeDonor') : t('home.profileIncomplete')}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <Link
                   href="/profile"
-                  className="btn btn-primary"
-                  style={{ fontSize: '0.875rem' }}
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    transition: 'background-color 0.2s',
+                    display: 'inline-block'
+                  }}
                 >
-                  {user.bloodType ? 'Update Profile' : 'Complete Profile'}
+                  {user.bloodType ? t('home.updateProfile') : t('home.completeProfile')}
                 </Link>
               </div>
             </div>
-            
+
             {/* Location Status */}
-            <LocationStatus />
+            {location && (
+              <div style={{ 
+                marginTop: '16px', 
+                backgroundColor: '#f0fdf4', 
+                borderRadius: '12px', 
+                padding: '16px' 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <MapPin style={{ width: '20px', height: '20px', color: '#059669' }} />
+                  <div>
+                    <div style={{ 
+                      fontWeight: '500', 
+                      color: '#065f46',
+                      margin: '0 0 4px 0'
+                    }}>
+                      {t('home.locationEnabled')}
+                    </div>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#059669',
+                      margin: 0
+                    }}>
+                      {t('home.readyToReceive')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}

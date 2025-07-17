@@ -176,15 +176,14 @@ export const matchSchema = z.object({
 });
 
 export const matchCreateSchema = z.object({
-  tripId: z.string().min(1, 'Trip ID is required'),
-  requestId: z.string().min(1, 'Request ID is required'),
+  requestId: z.string().min(1, 'Blood Request ID is required'),
 });
 
 // Message validation schema
 export const messageSchema = z.object({
   chatId: z.string()
     .min(1, 'Chat ID is required')
-    .regex(/^[a-zA-Z0-9\-]+_[a-zA-Z0-9\-]+$/, 'Invalid chat ID format'),
+    .regex(/^[a-zA-Z0-9\-]+_[a-zA-Z0-9\-]+(_[a-zA-Z0-9\-]+)?$/, 'Invalid chat ID format'),
   senderId: z.string().min(1, 'Sender ID is required'),
   text: z.string().min(1, 'Message text is required').max(1000, 'Message too long'),
   timestamp: z.date().optional(),
@@ -193,7 +192,7 @@ export const messageSchema = z.object({
 export const messageCreateSchema = z.object({
   chatId: z.string()
     .min(1, 'Chat ID is required')
-    .regex(/^[a-zA-Z0-9\-]+_[a-zA-Z0-9\-]+$/, 'Invalid chat ID format'),
+    .regex(/^[a-zA-Z0-9\-]+_[a-zA-Z0-9\-]+(_[a-zA-Z0-9\-]+)?$/, 'Invalid chat ID format'),
   text: z.string().min(1, 'Message text is required').max(1000, 'Message too long'),
 });
 
@@ -260,6 +259,64 @@ export const donorResponseSchema = z.object({
   requestId: z.string().min(1, 'Request ID is required'),
   response: z.enum(['accepted', 'declined'], { required_error: 'Response is required' }),
   notes: z.string().max(500, 'Notes too long').optional()
+});
+
+// Donation Offer validation schemas
+export const donationOfferCreateSchema = z.object({
+  donorId: z.string().min(1, 'Donor ID is required'),
+  bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], { required_error: 'Blood type is required' }),
+  availableUnits: z.number().min(1, 'At least 1 unit required').max(5, 'Maximum 5 units allowed'),
+  location: z.object({
+    name: z.string().max(100, 'Location name too long').optional(),
+    address: z.string().max(200, 'Address too long').optional(),
+    coordinates: z.object({
+      lat: z.number().min(-90).max(90, 'Invalid latitude'),
+      lng: z.number().min(-180).max(180, 'Invalid longitude')
+    }).optional()
+  }).optional(),
+  availableFrom: z.string().transform((str) => new Date(str)),
+  availableUntil: z.string().transform((str) => new Date(str)),
+  contactInfo: z.object({
+    donorName: z.string().min(1, 'Donor name is required').max(100, 'Name too long'),
+    donorPhone: z.string().min(1, 'Phone number is required'),
+    alternateContact: z.string().optional()
+  }),
+  medicalInfo: z.object({
+    lastDonationDate: z.string().transform((str) => new Date(str)).optional(),
+    weight: z.number().min(50, 'Minimum weight 50kg').max(200, 'Maximum weight 200kg').optional(),
+    age: z.number().min(18, 'Minimum age 18').max(65, 'Maximum age 65').optional(),
+    healthConditions: z.array(z.string()).optional(),
+    medications: z.array(z.string()).optional()
+  }).optional(),
+  notes: z.string().max(500, 'Notes too long').optional()
+});
+
+export const donationOfferUpdateSchema = z.object({
+  availableUnits: z.number().min(1).max(5).optional(),
+  location: z.object({
+    name: z.string().max(100).optional(),
+    address: z.string().max(200).optional(),
+    coordinates: z.object({
+      lat: z.number().min(-90).max(90),
+      lng: z.number().min(-180).max(180)
+    }).optional()
+  }).optional(),
+  availableFrom: z.string().transform((str) => new Date(str)).optional(),
+  availableUntil: z.string().transform((str) => new Date(str)).optional(),
+  contactInfo: z.object({
+    donorName: z.string().min(1).max(100).optional(),
+    donorPhone: z.string().min(1).optional(),
+    alternateContact: z.string().optional()
+  }).optional(),
+  medicalInfo: z.object({
+    lastDonationDate: z.string().transform((str) => new Date(str)).optional(),
+    weight: z.number().min(50).max(200).optional(),
+    age: z.number().min(18).max(65).optional(),
+    healthConditions: z.array(z.string()).optional(),
+    medications: z.array(z.string()).optional()
+  }).optional(),
+  notes: z.string().max(500).optional(),
+  status: z.enum(['available', 'matched', 'completed', 'cancelled']).optional()
 });
 
 // Validation helper function

@@ -1,11 +1,11 @@
 {
-  "name": "TravelConnect",
-  "short_name": "TravelConnect",
-  "description": "Connect people who want to send items internationally with travelers",
+  "name": "Munqidh - منقذ",
+  "short_name": "Munqidh",
+  "description": "Emergency blood request matching system - connecting donors with patients in need",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3B82F6",
+  "theme_color": "#DC2626",
   "orientation": "portrait-primary",
   "icons": [
     {

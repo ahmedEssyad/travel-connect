@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient } from '@/lib/api-client';
 import MobileHeader from '@/components/Layout/MobileHeader';
 
@@ -25,6 +26,7 @@ function MessagesPageContent() {
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
 
@@ -97,7 +99,7 @@ function MessagesPageContent() {
             chatId: chat.chatId,
             otherUserId: chat.otherUserId,
             otherUserName: chat.otherUserName || 'Unknown User',
-            lastMessage: chat.lastMessage || 'No messages yet',
+            lastMessage: chat.lastMessage || t('messages.noMessagesYet'),
             lastActivity: chat.lastActivity || new Date().toISOString(),
             bloodType: bloodRequest?.patientInfo?.bloodType || 'Unknown',
             hospital: bloodRequest?.hospital?.name || 'Unknown Hospital',
@@ -132,7 +134,7 @@ function MessagesPageContent() {
             // User is requester - look for matched donors
             if (request.matchedDonors && request.matchedDonors.length > 0) {
               request.matchedDonors.forEach((donor: any) => {
-                const chatId = [user?.id, donor.donorId].sort().join('_');
+                const chatId = [user?.id, donor.donorId].sort().join('_') + '_' + request._id;
                 
                 // Check if this chat already exists to avoid duplicates
                 const existingChat = userChats.find(chat => chat.chatId === chatId);
@@ -141,7 +143,7 @@ function MessagesPageContent() {
                     chatId,
                     otherUserId: donor.donorId,
                     otherUserName: donor.donorName,
-                    lastMessage: 'Blood request connection',
+                    lastMessage: t('messages.bloodRequestConnection'),
                     lastActivity: donor.respondedAt || request.createdAt,
                     bloodType: request.patientInfo.bloodType,
                     hospital: request.hospital.name,
@@ -156,7 +158,7 @@ function MessagesPageContent() {
             // Check if user is a matched donor
             const userAsDonor = request.matchedDonors.find((donor: any) => donor.donorId === user?.id);
             if (userAsDonor) {
-              const chatId = [user?.id, request.requesterId].sort().join('_');
+              const chatId = [user?.id, request.requesterId].sort().join('_') + '_' + request._id;
               
               // Check if this chat already exists to avoid duplicates
               const existingChat = userChats.find(chat => chat.chatId === chatId);
@@ -165,7 +167,7 @@ function MessagesPageContent() {
                   chatId,
                   otherUserId: request.requesterId,
                   otherUserName: request.contactInfo?.requesterName || 'Requester',
-                  lastMessage: 'Blood request connection',
+                  lastMessage: t('messages.bloodRequestConnection'),
                   lastActivity: userAsDonor.respondedAt || request.createdAt,
                   bloodType: request.patientInfo.bloodType,
                   hospital: request.hospital.name,
@@ -198,13 +200,13 @@ function MessagesPageContent() {
         // Just use the data we already have from messageBasedChats, and add basic info for blood request chats
         const chatsWithMessages = allChats.map(chat => {
           // If chat came from messages (has real lastMessage), use it
-          if (chat.fromMessages && chat.lastMessage !== 'No messages yet') {
+          if (chat.fromMessages && chat.lastMessage !== t('messages.noMessagesYet')) {
             return chat;
           }
           // Otherwise use fallback
           return {
             ...chat,
-            lastMessage: chat.lastMessage || 'No messages yet'
+            lastMessage: chat.lastMessage || t('messages.noMessagesYet')
           };
         });
         
@@ -219,7 +221,7 @@ function MessagesPageContent() {
       }
     } catch (error) {
       console.error('Error loading chats:', error);
-      toast.error('Failed to load chats');
+      toast.error(t('messages.loading'));
     } finally {
       setLoadingChats(false);
     }
@@ -243,13 +245,20 @@ function MessagesPageContent() {
 
   if (!user) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'var(--surface)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        direction: isRTL ? 'rtl' : 'ltr'
+      }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '1.5rem', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-muted)' }}>
-            Access Restricted
+            {t('auth.accessRestricted')}
           </div>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Please log in to view your messages.
+            {t('messages.pleaseLoginToViewMessages')}
           </p>
         </div>
       </div>
@@ -258,7 +267,14 @@ function MessagesPageContent() {
 
   if (loading || loadingChats) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'var(--surface)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        direction: isRTL ? 'rtl' : 'ltr'
+      }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '48px',
@@ -269,24 +285,28 @@ function MessagesPageContent() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading messages...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('messages.loading')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'var(--surface)',
+      direction: isRTL ? 'rtl' : 'ltr'
+    }}>
       <MobileHeader
-        title="Messages"
-        subtitle="Direct communication with donors and requesters"
+        title={t('messages.title')}
+        subtitle={t('messages.subtitle')}
         rightAction={
           <button
             onClick={() => router.push('/blood-requests')}
             className="btn btn-primary"
             style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}
           >
-            🩸 Find Requests
+            🩸 {t('messages.findRequests')}
           </button>
         }
       />
@@ -297,23 +317,23 @@ function MessagesPageContent() {
           <div className="card p-6 md:p-8" style={{ textAlign: 'center' }}>
             <div className="text-2xl md:text-3xl" style={{ marginBottom: '1rem' }}>💬</div>
             <h3 className="text-lg md:text-xl" style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
-              No Chats Yet
+              {t('messages.noChatsYet')}
             </h3>
             <p className="text-sm md:text-base mb-6" style={{ color: 'var(--text-secondary)' }}>
-              When you help with blood requests, you'll be able to chat here
+              {t('messages.noChatsDesc')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => router.push('/blood-requests')}
                 className="btn btn-primary"
               >
-                🩸 Find Requests
+                🩸 {t('messages.findRequests')}
               </button>
               <button
                 onClick={() => router.push('/request-blood')}
                 className="btn btn-outline"
               >
-                🚨 Create Request
+                🚨 {t('messages.createRequest')}
               </button>
             </div>
           </div>
@@ -341,18 +361,18 @@ function MessagesPageContent() {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="text-lg md:text-xl">🩸</div>
                       <h4 className="text-base md:text-lg font-semibold text-primary truncate">
-                        Chat with {chat.otherUserName}
+                        {t('messages.chatWith')} {chat.otherUserName}
                       </h4>
                     </div>
                     <div className="space-y-2">
                       <div className="text-sm text-secondary">
-                        <strong>Blood Type:</strong> {chat.bloodType}
+                        <strong>{t('messages.bloodType')}:</strong> {chat.bloodType}
                       </div>
                       <div className="text-sm text-secondary">
-                        <strong>Hospital:</strong> {chat.hospital}
+                        <strong>{t('messages.hospital')}:</strong> {chat.hospital}
                       </div>
                       <div className="text-sm text-secondary">
-                        <strong>Last activity:</strong> {new Date(chat.lastActivity).toLocaleDateString()}
+                        <strong>{t('messages.lastActivity')}:</strong> {new Date(chat.lastActivity).toLocaleDateString()}
                       </div>
                       <div className="text-sm bg-surface p-2 rounded italic truncate max-w-full md:max-w-md">
                         "{chat.lastMessage}"
@@ -376,7 +396,7 @@ function MessagesPageContent() {
                         background: chat.isActive ? 'rgba(5, 150, 105, 0.1)' : 'var(--surface)',
                       }}
                     >
-                      {chat.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      {chat.isActive ? t('messages.active') : t('messages.inactive')}
                     </div>
                   </div>
                 </div>

@@ -3,10 +3,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { apiClient } from '@/lib/api-client';
-import { Trip, Request, Match } from '@/types';
+import { Request, Match } from '@/types';
 
 interface DataContextType {
-  trips: Trip[];
   requests: Request[];
   matches: Match[];
   loading: boolean;
@@ -25,7 +24,6 @@ export const useData = () => {
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [trips, setTrips] = useState<Trip[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,24 +33,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     setLoading(true);
     try {
-      // Fetch all data in parallel
-      const [tripsResponse, requestsResponse, matchesResponse] = await Promise.all([
-        apiClient.get('/api/trips'),
+      // Fetch data in parallel
+      const [requestsResponse, matchesResponse] = await Promise.all([
         apiClient.get('/api/requests'),
         apiClient.get('/api/matches')
       ]);
-
-      if (tripsResponse.ok) {
-        const tripsData = await tripsResponse.json();
-        const formattedTrips = tripsData.map((trip: any) => ({
-          ...trip,
-          id: trip._id,
-          createdAt: new Date(trip.createdAt),
-          departureDate: new Date(trip.departureDate),
-          arrivalDate: new Date(trip.arrivalDate),
-        }));
-        setTrips(formattedTrips);
-      }
 
       if (requestsResponse.ok) {
         const requestsData = await requestsResponse.json();
@@ -93,7 +78,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [user]);
 
   const value = {
-    trips,
     requests,
     matches,
     loading,

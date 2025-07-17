@@ -40,7 +40,7 @@ export default function WelcomeScreen() {
           fontWeight: '700',
           marginBottom: '1rem'
         }}>
-          Welcome to BloodConnect!
+          Welcome to mounkidh!
         </h1>
 
         <p style={{ 

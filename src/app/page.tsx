@@ -1,20 +1,20 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import FriendlyLogin from '@/components/Auth/FriendlyLogin';
+import LandingPage from '@/components/Landing/LandingPage';
 import HomePage from '@/components/Home/HomePage';
 import LocationPermission from '@/components/Common/LocationPermission';
-import { BloodConnectLoading } from '@/components/Common/Loading';
+import { MunqidhLoading } from '@/components/Common/Loading';
 
 export default function Home() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <BloodConnectLoading />;
+    return <MunqidhLoading />;
   }
 
   if (!user) {
-    return <FriendlyLogin />;
+    return <LandingPage />;
   }
 
   return (

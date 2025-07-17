@@ -5,11 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api-client';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslation } from '@/lib/i18n';
 
 export default function PhoneLogin() {
   const router = useRouter();
   const { login } = useAuth();
   const toast = useToast();
+  const { language } = useLanguage();
+  const t = (key: string) => getTranslation(language, key);
   
   const [step, setStep] = useState<'phone' | 'password' | 'code'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -44,7 +48,7 @@ export default function PhoneLogin() {
     const cleanPhone = phoneNumber.replace(/\D/g, '');
     
     if (cleanPhone.length < 11) {
-      toast.error('Please enter a valid Mauritanian phone number');
+      toast.error(t('auth.phoneInvalid'));
       return;
     }
 
@@ -67,10 +71,10 @@ export default function PhoneLogin() {
           if (response.ok) {
             setCodeSent(true);
             setStep('code');
-            toast.success('Verification code sent to your phone');
+            toast.success(t('auth.codeSent'));
           } else {
             const error = await response.text();
-            toast.error(error || 'Failed to send verification code');
+            toast.error(error || t('auth.loginFailed'));
           }
         }
       } else {
@@ -82,15 +86,15 @@ export default function PhoneLogin() {
         if (response.ok) {
           setCodeSent(true);
           setStep('code');
-          toast.success('Verification code sent to your phone');
+          toast.success(t('auth.codeSent'));
         } else {
           const error = await response.text();
-          toast.error(error || 'Failed to send verification code');
+          toast.error(error || t('auth.loginFailed'));
         }
       }
     } catch (error) {
       console.error('Phone verification error:', error);
-      toast.error('Network error. Please try again.');
+      toast.error(t('toast.networkError'));
     } finally {
       setLoading(false);
     }
@@ -132,7 +136,7 @@ export default function PhoneLogin() {
       }
     } catch (error) {
       console.error('Password login error:', error);
-      toast.error('Network error. Please try again.');
+      toast.error(t('toast.networkError'));
     } finally {
       setLoading(false);
     }
@@ -200,7 +204,7 @@ export default function PhoneLogin() {
           // Update auth context
           await login(data.user, data.token);
           
-          toast.success('Login successful!');
+          toast.success(t('auth.loginSuccess'));
           
           // Redirect based on profile completeness
           if (data.user.isProfileComplete) {
@@ -211,12 +215,12 @@ export default function PhoneLogin() {
           }
         } else {
           const error = await response.text();
-          toast.error(error || 'Invalid verification code');
+          toast.error(error || t('auth.invalidCode'));
         }
       }
     } catch (error) {
       console.error('Code verification error:', error);
-      toast.error('Network error. Please try again.');
+      toast.error(t('toast.networkError'));
     } finally {
       setLoading(false);
     }
@@ -233,15 +237,15 @@ export default function PhoneLogin() {
       });
 
       if (response.ok) {
-        toast.success('New verification code sent');
+        toast.success(t('auth.codeSent'));
         setVerificationCode('');
       } else {
         const error = await response.text();
-        toast.error(error || 'Failed to resend code');
+        toast.error(error || t('auth.loginFailed'));
       }
     } catch (error) {
       console.error('Resend code error:', error);
-      toast.error('Network error. Please try again.');
+      toast.error(t('toast.networkError'));
     } finally {
       setLoading(false);
     }
@@ -269,7 +273,7 @@ export default function PhoneLogin() {
             color: 'var(--danger)',
             marginBottom: '0.5rem'
           }}>
-            🩸 BloodConnect
+            🩸 mounkidh
           </h1>
           <p style={{ color: 'var(--text-secondary)' }}>
             {step === 'phone' ? 'Enter your phone number to continue' : 
@@ -320,7 +324,7 @@ export default function PhoneLogin() {
                 marginBottom: '0.5rem',
                 color: 'var(--text-primary)'
               }}>
-                Phone Number
+                {t('auth.phone')}
               </label>
               <input
                 type="tel"
@@ -425,14 +429,14 @@ export default function PhoneLogin() {
                     if (response.ok) {
                       setCodeSent(true);
                       setStep('code');
-                      toast.success('Verification code sent to your phone');
+                      toast.success(t('auth.codeSent'));
                     } else {
                       const error = await response.text();
-                      toast.error(error || 'Failed to send verification code');
+                      toast.error(error || t('auth.loginFailed'));
                     }
                   } catch (error) {
                     console.error('SMS fallback error:', error);
-                    toast.error('Network error. Please try again.');
+                    toast.error(t('toast.networkError'));
                   } finally {
                     setLoading(false);
                   }
@@ -467,7 +471,7 @@ export default function PhoneLogin() {
                     }
                   } catch (error) {
                     console.error('Password reset error:', error);
-                    toast.error('Network error. Please try again.');
+                    toast.error(t('toast.networkError'));
                   } finally {
                     setLoading(false);
                   }
@@ -597,7 +601,7 @@ export default function PhoneLogin() {
               style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem' }}
               disabled={loading || verificationCode.length !== 6 || (isPasswordReset && (!newPassword || !confirmNewPassword || newPassword !== confirmNewPassword))}
             >
-              {loading ? (isPasswordReset ? 'Resetting...' : 'Verifying...') : (isPasswordReset ? 'Reset Password' : 'Verify Code')}
+              {loading ? (isPasswordReset ? t('common.loading') : t('common.loading')) : (isPasswordReset ? t('auth.resetPassword') : t('auth.verifyCode'))}
             </button>
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>

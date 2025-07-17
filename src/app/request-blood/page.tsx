@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient } from '@/lib/api-client';
 import BloodTypeSelector from '@/components/Common/BloodTypeSelector';
 import MobileHeader from '@/components/Layout/MobileHeader';
@@ -13,6 +14,7 @@ export default function RequestBloodPage() {
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -32,6 +34,12 @@ export default function RequestBloodPage() {
       requesterPhone: user?.phone || '',
       alternateContact: ''
     },
+    hospital: {
+      name: '',
+      address: '',
+      department: '',
+      contactNumber: ''
+    },
     medicalDetails: {
       procedure: '',
       doctorName: '',
@@ -50,34 +58,39 @@ export default function RequestBloodPage() {
 
     // Validation
     if (!formData.patientInfo.name.trim()) {
-      toast.error('Patient name is required');
+      toast.error(t('validation.patientNameRequired'));
       return;
     }
     
     if (!formData.patientInfo.bloodType) {
-      toast.error('Blood type is required');
+      toast.error(t('validation.bloodTypeRequired'));
       return;
     }
     
     if (!formData.patientInfo.condition.trim()) {
-      toast.error('Medical condition is required');
+      toast.error(t('validation.conditionRequired'));
       return;
     }
     
     if (!formData.deadline) {
-      toast.error('Deadline is required');
+      toast.error(t('validation.deadlineRequired'));
       return;
     }
 
     if (!formData.contactInfo.requesterPhone.trim()) {
-      toast.error('Contact phone number is required');
+      toast.error(t('validation.phoneRequired'));
+      return;
+    }
+
+    if (!formData.hospital.name.trim()) {
+      toast.error('Hospital name is required');
       return;
     }
 
     // Check if deadline is in the future
     const deadlineDate = new Date(formData.deadline);
     if (deadlineDate <= new Date()) {
-      toast.error('Deadline must be in the future');
+      toast.error(t('validation.deadlineFuture'));
       return;
     }
 
@@ -90,15 +103,15 @@ export default function RequestBloodPage() {
 
       if (response.ok) {
         const result = await response.json();
-        toast.success(`Blood request created! ${result.notifiedDonors} compatible donors have been notified.`);
+        toast.success(`${t('notifications.requestCreated')} ${result.notifiedDonors} ${t('notifications.donorsNotified')}.`);
         router.push('/blood-requests');
       } else {
         const error = await response.text();
-        throw new Error(error || 'Failed to create blood request');
+        throw new Error(error || t('notifications.connectionFailed'));
       }
     } catch (error) {
       console.error('Error creating blood request:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create blood request');
+      toast.error(error instanceof Error ? error.message : t('notifications.connectionFailed'));
     } finally {
       setLoading(false);
     }
@@ -106,85 +119,208 @@ export default function RequestBloodPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🩸</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Restricted</h2>
-          <p className="text-gray-600">Please log in to create a blood request.</p>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#f9fafb',
+        direction: isRTL ? 'rtl' : 'ltr'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🩸</div>
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1f2937',
+            marginBottom: '8px'
+          }}>
+            {t('auth.accessRestricted')}
+          </h2>
+          <p style={{ color: '#6b7280' }}>{t('auth.pleaseLogin')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#f9fafb',
+      direction: isRTL ? 'rtl' : 'ltr'
+    }}>
       <MobileHeader
-        title="Request Blood"
+        title={t('bloodRequest.emergencyRequest')}
         rightAction={
           <button
             onClick={() => router.back()}
-            className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+            style={{
+              padding: '4px 12px',
+              fontSize: '14px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              backgroundColor: 'white',
+              color: '#374151',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         }
       />
 
-      <main className="container mx-auto px-4 py-6" style={{ paddingTop: '80px' }}>
-        <div className="max-w-2xl mx-auto">
+      <main style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '24px 16px',
+        paddingTop: '104px'
+      }}>
+        <div style={{ maxWidth: '672px', margin: '0 auto' }}>
           {/* Header */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <span className="text-2xl">🩸</span>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '24px',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#fecaca',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <span style={{ fontSize: '24px' }}>🩸</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-red-600">Emergency Blood Request</h1>
-                <p className="text-gray-600 text-sm">Connect with compatible donors in your area</p>
+                <h1 style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#dc2626',
+                  margin: 0
+                }}>
+                  {t('bloodRequest.emergencyRequest')}
+                </h1>
+                <p style={{
+                  color: '#6b7280',
+                  fontSize: '14px',
+                  margin: 0
+                }}>
+                  {t('bloodRequest.connectWithDonors')}
+                </p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Urgency Level */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Urgency Level *
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '24px'
+            }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '12px'
+              }}>
+                {t('bloodRequest.urgencyLevel')} *
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '12px'
+              }}>
                 {[
-                  { value: 'critical', label: 'Critical', icon: '🚨', color: 'red' },
-                  { value: 'urgent', label: 'Urgent', icon: '⚠️', color: 'yellow' },
-                  { value: 'standard', label: 'Standard', icon: '📋', color: 'blue' }
-                ].map((urgency) => (
-                  <button
-                    key={urgency.value}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, urgencyLevel: urgency.value as UrgencyLevel }))}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
-                      formData.urgencyLevel === urgency.value
-                        ? urgency.color === 'red' ? 'border-red-500 bg-red-50 text-red-700'
-                        : urgency.color === 'yellow' ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                        : 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="text-lg mb-1">{urgency.icon}</div>
-                    {urgency.label}
-                  </button>
-                ))}
+                  { value: 'critical', label: t('bloodRequest.critical'), icon: '🚨', color: 'red' },
+                  { value: 'urgent', label: t('bloodRequest.urgent'), icon: '⚠️', color: 'yellow' },
+                  { value: 'standard', label: t('bloodRequest.standard'), icon: '📋', color: 'blue' }
+                ].map((urgency) => {
+                  const isSelected = formData.urgencyLevel === urgency.value;
+                  const getStyles = () => {
+                    if (isSelected) {
+                      if (urgency.color === 'red') return { border: '2px solid #ef4444', backgroundColor: '#fef2f2', color: '#b91c1c' };
+                      if (urgency.color === 'yellow') return { border: '2px solid #eab308', backgroundColor: '#fefce8', color: '#a16207' };
+                      return { border: '2px solid #3b82f6', backgroundColor: '#eff6ff', color: '#1d4ed8' };
+                    }
+                    return { border: '2px solid #e5e7eb', backgroundColor: 'white', color: '#374151' };
+                  };
+                  
+                  return (
+                    <button
+                      key={urgency.value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, urgencyLevel: urgency.value as UrgencyLevel }))}
+                      style={{
+                        padding: '12px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        ...getStyles()
+                      }}
+                      onMouseOver={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }
+                      }}
+                    >
+                      <div style={{ fontSize: '18px', marginBottom: '4px' }}>{urgency.icon}</div>
+                      {urgency.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Patient Information */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Patient Information</h3>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '24px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '16px',
+                margin: '0 0 16px 0'
+              }}>
+                {t('bloodRequest.patientInfo')}
+              </h3>
               
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Patient Name *
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      {t('bloodRequest.patientName')} *
                     </label>
                     <input
                       type="text"
@@ -193,14 +329,36 @@ export default function RequestBloodPage() {
                         ...prev,
                         patientInfo: { ...prev.patientInfo, name: e.target.value }
                       }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="Full name"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                      placeholder={t('bloodRequest.patientName')}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Age *
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      {t('bloodRequest.age')} *
                     </label>
                     <input
                       type="number"
@@ -211,16 +369,38 @@ export default function RequestBloodPage() {
                         ...prev,
                         patientInfo: { ...prev.patientInfo, age: parseInt(e.target.value) || 0 }
                       }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="Age"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                      placeholder={t('bloodRequest.age')}
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Blood Type Needed *
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '4px'
+                  }}>
+                    {t('bloodRequest.bloodTypeNeeded')} *
                   </label>
                   <BloodTypeSelector
                     value={formData.patientInfo.bloodType}
@@ -233,8 +413,14 @@ export default function RequestBloodPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Medical Condition *
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '4px'
+                  }}>
+                    {t('bloodRequest.medicalCondition')} *
                   </label>
                   <textarea
                     value={formData.patientInfo.condition}
@@ -242,17 +428,41 @@ export default function RequestBloodPage() {
                       ...prev,
                       patientInfo: { ...prev.patientInfo, condition: e.target.value }
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      outline: 'none',
+                      resize: 'vertical',
+                      minHeight: '72px'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#dc2626';
+                      e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
                     rows={3}
-                    placeholder="Describe the medical condition requiring blood transfusion"
+                    placeholder={t('bloodRequest.conditionDesc')}
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Units Required *
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      {t('bloodRequest.unitsRequired')} *
                     </label>
                     <input
                       type="number"
@@ -263,19 +473,57 @@ export default function RequestBloodPage() {
                         ...prev,
                         requiredUnits: parseInt(e.target.value) || 1
                       }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Deadline *
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      {t('bloodRequest.deadline')} *
                     </label>
                     <input
                       type="datetime-local"
                       value={formData.deadline}
                       onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
                       min={new Date().toISOString().slice(0, 16)}
                       required
                     />
@@ -284,15 +532,210 @@ export default function RequestBloodPage() {
               </div>
             </div>
 
-            {/* Contact Information */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Contact Information</h3>
+            {/* Hospital Information */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '24px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '16px',
+                margin: '0 0 16px 0'
+              }}>
+                Hospital Information
+              </h3>
               
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '4px'
+                  }}>
+                    Hospital/Clinic Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.hospital.name}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      hospital: { ...prev.hospital, name: e.target.value }
+                    }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#dc2626';
+                      e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    placeholder="e.g., General Hospital, City Clinic"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Your Name *
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      Department (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.hospital.department}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        hospital: { ...prev.hospital, department: e.target.value }
+                      }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                      placeholder="e.g., Emergency, ICU, Surgery"
+                    />
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      Hospital Phone (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.hospital.contactNumber}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        hospital: { ...prev.hospital, contactNumber: e.target.value }
+                      }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                      placeholder="Hospital contact number"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '4px'
+                  }}>
+                    Hospital Address (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.hospital.address}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      hospital: { ...prev.hospital, address: e.target.value }
+                    }))}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#dc2626';
+                      e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    placeholder="Hospital address or location"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '24px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '16px',
+                margin: '0 0 16px 0'
+              }}>
+                {t('bloodRequest.contactInfo')}
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      {t('bloodRequest.yourName')} *
                     </label>
                     <input
                       type="text"
@@ -301,13 +744,35 @@ export default function RequestBloodPage() {
                         ...prev,
                         contactInfo: { ...prev.contactInfo, requesterName: e.target.value }
                       }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Your Phone *
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '4px'
+                    }}>
+                      {t('bloodRequest.yourPhone')} *
                     </label>
                     <input
                       type="tel"
@@ -316,45 +781,129 @@ export default function RequestBloodPage() {
                         ...prev,
                         contactInfo: { ...prev.contactInfo, requesterPhone: e.target.value }
                       }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.boxShadow = 'none';
+                      }}
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Additional Notes
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '4px'
+                  }}>
+                    {t('bloodRequest.additionalNotes')}
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      outline: 'none',
+                      resize: 'vertical',
+                      minHeight: '72px'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#dc2626';
+                      e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
                     rows={3}
-                    placeholder="Any additional information that might help donors..."
+                    placeholder={t('bloodRequest.additionalNotesDesc')}
                   />
                 </div>
               </div>
             </div>
 
             {/* Submit Button */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb',
+              padding: '24px'
+            }}>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                style={{
+                  width: '100%',
+                  backgroundColor: loading ? '#9ca3af' : '#dc2626',
+                  color: 'white',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseOver={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.backgroundColor = '#b91c1c';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.backgroundColor = '#dc2626';
+                  }
+                }}
               >
                 {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating Request...
-                  </div>
+                  <>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid white',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    {t('bloodRequest.creatingRequest')}
+                  </>
                 ) : (
-                  <>🩸 Create Blood Request</>
+                  <>🩸 {t('bloodRequest.createRequest')}</>
                 )}
               </button>
-              <p className="text-xs text-gray-500 text-center mt-2">
-                Compatible donors in your area will be notified immediately
+              <p style={{
+                fontSize: '12px',
+                color: '#6b7280',
+                textAlign: 'center',
+                marginTop: '8px',
+                margin: '8px 0 0 0'
+              }}>
+                {t('bloodRequest.donorsNotified')}
               </p>
             </div>
           </form>

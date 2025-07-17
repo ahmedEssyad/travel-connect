@@ -184,7 +184,7 @@ export default function FriendlyLogin() {
           
           await login(data.user, data.token);
           
-          toast.success('Welcome to BloodConnect!');
+          toast.success('Welcome to mounkidh!');
           
           if (data.user.isProfileComplete) {
             router.push('/');
@@ -254,7 +254,7 @@ export default function FriendlyLogin() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
           }}>
-            BloodConnect
+            mounkidh
           </h1>
           
           <p style={{ 
@@ -400,7 +400,7 @@ export default function FriendlyLogin() {
                 color: 'var(--text-primary)',
                 marginBottom: '0.5rem'
               }}>
-                {step === 'phone' ? 'Login to BloodConnect' : 
+                {step === 'phone' ? 'Login to mounkidh' : 
                  step === 'password' ? 'Enter Password' : 
                  isPasswordReset ? 'Reset Password' : 'Verify Phone'}
               </h2>
@@ -467,7 +467,7 @@ export default function FriendlyLogin() {
                       cursor: 'pointer'
                     }}
                   >
-                    New to BloodConnect? Learn more
+                    New to mounkidh? Learn more
                   </button>
                 </div>
               </form>

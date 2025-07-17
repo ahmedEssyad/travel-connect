@@ -97,7 +97,7 @@ export default function PasswordWelcome() {
                 color: 'var(--text-primary)',
                 marginBottom: '1rem'
               }}>
-                Welcome to BloodConnect!
+                Welcome to mounkidh!
               </h1>
               <p style={{ 
                 color: 'var(--text-secondary)',

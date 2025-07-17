@@ -41,7 +41,7 @@ export default function TopBar() {
             color: 'var(--text-primary)',
             margin: 0
           }}>
-            BloodConnect
+            mounkidh
           </h1>
         </div>
 

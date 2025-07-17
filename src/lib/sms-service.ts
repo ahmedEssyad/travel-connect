@@ -3,6 +3,50 @@
  * This file should only be imported in API routes or server-side code
  */
 
+/**
+ * Format phone number for Mauritania
+ * Mauritanian phone numbers: +222 XXXX XXXX
+ */
+export function formatPhoneNumber(phoneNumber: string): string {
+  // Remove all non-digit characters
+  const digits = phoneNumber.replace(/\D/g, '');
+  
+  // Handle different input formats
+  if (digits.startsWith('222')) {
+    // Already has country code
+    return '+' + digits;
+  } else if (digits.length === 8) {
+    // Local number format
+    return '+222' + digits;
+  } else {
+    throw new Error('Invalid Mauritanian phone number format');
+  }
+}
+
+/**
+ * Validate Mauritanian phone number
+ */
+export function isValidPhoneNumber(phoneNumber: string): boolean {
+  try {
+    const formatted = formatPhoneNumber(phoneNumber);
+    // Mauritanian numbers: +222 followed by 8 digits
+    return /^\+222\d{8}$/.test(formatted);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get SMS service instance (for backward compatibility)
+ */
+export function getSMSService() {
+  return {
+    sendSMS,
+    formatPhoneNumber,
+    isValidPhoneNumber
+  };
+}
+
 export async function sendSMS(
   phoneNumber: string,
   message: string
@@ -29,7 +73,7 @@ export async function sendSMS(
     
     const result = await client.messages.create({
       body: message,
-      from: fromNumber,
+      from: 'Munqidh',
       to: phoneNumber
     });
 

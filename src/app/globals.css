@@ -30,13 +30,61 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-geist-sans), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--background);
   color: var(--text-primary);
   line-height: 1.6;
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Arabic Language Support */
+html[lang="ar"] body {
+  font-family: var(--font-noto-arabic), 'Noto Sans Arabic', 'Arial Unicode MS', Tahoma, sans-serif;
+  direction: rtl;
+}
+
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+html[dir="rtl"] body {
+  font-family: var(--font-noto-arabic), 'Noto Sans Arabic', 'Arial Unicode MS', Tahoma, sans-serif;
+}
+
+/* RTL specific styles */
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+/* Arabic number support */
+[dir="rtl"] .arabic-numbers {
+  unicode-bidi: plaintext;
+}
+
+/* Better Arabic line height */
+[dir="rtl"] p, [dir="rtl"] span, [dir="rtl"] div {
+  line-height: 1.8;
+}
+
+/* Arabic button spacing */
+[dir="rtl"] button {
+  letter-spacing: 0.02em;
+}
+
+/* Ensure proper text direction for mixed content */
+.mixed-content {
+  unicode-bidi: plaintext;
+  text-align: start;
 }
 
 /* Enhanced scrollbar */

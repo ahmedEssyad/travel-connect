@@ -58,7 +58,7 @@ export default function LocationPermission({ onLocationGranted, showAlways = fal
                 Location Access Required
               </h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                BloodConnect needs your location to find nearby blood requests and donors. 
+                mounkidh needs your location to find nearby blood requests and donors. 
                 Your location is only used for emergency matching and is never stored permanently.
               </p>
               <div style={{ 

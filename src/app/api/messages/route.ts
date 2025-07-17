@@ -23,9 +23,9 @@ export async function GET(request: NextRequest) {
     }
     
     // Verify user has access to this chat
-    // Chat ID should be formatted as "userId1_userId2" sorted alphabetically
+    // Chat ID formats: "userId1_userId2" (old) or "userId1_userId2_requestId" (new)
     const chatUserIds = chatId.split('_');
-    if (chatUserIds.length !== 2 || !chatUserIds.includes(user.id)) {
+    if ((chatUserIds.length !== 2 && chatUserIds.length !== 3) || !chatUserIds.slice(0, 2).includes(user.id)) {
       throw createApiError('Unauthorized access to chat', HttpStatus.FORBIDDEN, ErrorTypes.AUTHORIZATION_ERROR);
     }
     
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     
     // Verify user has access to this chat
     const chatUserIds = chatId.split('_');
-    if (chatUserIds.length !== 2 || !chatUserIds.includes(user.id)) {
+    if ((chatUserIds.length !== 2 && chatUserIds.length !== 3) || !chatUserIds.slice(0, 2).includes(user.id)) {
       throw createApiError('Unauthorized access to chat', HttpStatus.FORBIDDEN, ErrorTypes.AUTHORIZATION_ERROR);
     }
     
