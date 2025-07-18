@@ -20,11 +20,19 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const savedLang = localStorage.getItem('language') as Language;
     if (savedLang && (savedLang === 'en' || savedLang === 'ar')) {
       setLanguageState(savedLang);
+      // Apply direction immediately
+      document.documentElement.dir = isRTL(savedLang) ? 'rtl' : 'ltr';
+      document.documentElement.lang = savedLang;
     } else {
       // Auto-detect language from browser
       const browserLang = navigator.language.toLowerCase();
       if (browserLang.startsWith('ar')) {
         setLanguageState('ar');
+        document.documentElement.dir = 'rtl';
+        document.documentElement.lang = 'ar';
+      } else {
+        document.documentElement.dir = 'ltr';
+        document.documentElement.lang = 'en';
       }
     }
   }, []);

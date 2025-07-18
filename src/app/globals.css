@@ -76,9 +76,87 @@ html[dir="rtl"] body {
   line-height: 1.8;
 }
 
-/* Arabic button spacing */
+/* Arabic button spacing and fixes */
 [dir="rtl"] button {
   letter-spacing: 0.02em;
+  text-align: center;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Fix button alignment and interaction in RTL */
+[dir="rtl"] .landing-button {
+  text-align: center;
+  direction: ltr; /* Keep button content LTR for better click handling */
+  unicode-bidi: embed;
+}
+
+[dir="rtl"] .landing-button:hover {
+  transform: translateY(-2px);
+}
+
+/* Ensure button text is readable in Arabic */
+[dir="rtl"] button span,
+[dir="rtl"] .landing-button span {
+  direction: rtl;
+  unicode-bidi: embed;
+}
+
+/* Fix flex containers in RTL */
+[dir="rtl"] .flex {
+  direction: rtl;
+}
+
+[dir="rtl"] .flex.items-center {
+  direction: rtl;
+}
+
+/* Fix button groups in RTL */
+[dir="rtl"] .flex.gap-4 > button {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+[dir="rtl"] .flex.gap-4 > button:last-child {
+  margin-right: 0;
+}
+
+/* Fix specific button interactions in RTL */
+[dir="rtl"] button:focus,
+[dir="rtl"] .landing-button:focus {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+/* Ensure buttons are properly clickable in RTL */
+[dir="rtl"] button,
+[dir="rtl"] .landing-button {
+  position: relative;
+  z-index: 1;
+  min-height: 44px; /* Touch-friendly */
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fix button text alignment in Arabic */
+[dir="rtl"] button {
+  text-align: center !important;
+}
+
+/* Prevent pointer-events issues */
+[dir="rtl"] button *,
+[dir="rtl"] .landing-button * {
+  pointer-events: none; /* Let parent handle clicks */
+}
+
+/* Fix navigation buttons */
+[dir="rtl"] .navigation-button {
+  direction: ltr;
+}
+
+[dir="rtl"] .navigation-button span {
+  direction: rtl;
 }
 
 /* Ensure proper text direction for mixed content */
