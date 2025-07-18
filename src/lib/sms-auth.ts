@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { validateEnvironment, getConfig } from './env-validation';
+import connectDB from './mongodb';
+import VerificationCode from '@/models/VerificationCode';
 
 // Dynamic import for twilio to reduce bundle size
 let twilioClient: any = null;
@@ -128,19 +130,23 @@ export async function sendVerificationCode(phoneNumber: string): Promise<{ succe
     const verificationCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Store verification code
-    verificationCodes.set(formattedPhone, {
-      phoneNumber: formattedPhone,
-      verificationCode,
-      expiresAt,
-      verified: false
-    });
-
-    // Save to file for development persistence
-    saveCodesToFile();
-
-    console.log('Stored verification code:', { formattedPhone, verificationCode, expiresAt });
-    console.log('Current verification codes after storing:', Array.from(verificationCodes.keys()));
+    // Connect to database
+    await connectDB();
+    
+    // Store verification code in database (upsert)
+    await VerificationCode.findOneAndUpdate(
+      { phoneNumber: formattedPhone },
+      {
+        phoneNumber: formattedPhone,
+        verificationCode,
+        expiresAt,
+        verified: false,
+        createdAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+    
+    console.log('Stored verification code in DB:', { formattedPhone, verificationCode, expiresAt });
 
     // Send SMS with dynamic import
     const client = await getTwilioClient();
@@ -178,44 +184,28 @@ export async function verifyCode(phoneNumber: string, code: string): Promise<{ s
   try {
     const formattedPhone = formatMauritanianPhone(phoneNumber);
     
-    // First, try to reload from file if not in memory
-    if (!verificationCodes.has(formattedPhone)) {
-      console.log('Code not in memory, reloading from file...');
-      loadCodesFromFile();
-    }
+    // Connect to database
+    await connectDB();
     
-    const verification = verificationCodes.get(formattedPhone);
+    // Find verification code in database
+    const verification = await VerificationCode.findOne({ 
+      phoneNumber: formattedPhone 
+    });
 
-    console.log('Verification attempt:', { formattedPhone, code, hasVerification: !!verification });
-    console.log('Current verification codes:', Array.from(verificationCodes.keys()));
+    console.log('Verification attempt:', { 
+      formattedPhone, 
+      code, 
+      hasVerification: !!verification,
+      originalPhone: phoneNumber 
+    });
 
     if (!verification) {
-      
-      // Try to read directly from file as last resort
-      try {
-        if (fs.existsSync(CODES_FILE)) {
-          const data = fs.readFileSync(CODES_FILE, 'utf8');
-          const savedCodes = JSON.parse(data);
-          const fileVerification = savedCodes[formattedPhone];
-          
-          if (fileVerification && new Date(fileVerification.expiresAt) > new Date()) {
-            console.log('Found code in file, checking...');
-            if (fileVerification.verificationCode === code) {
-              console.log('File verification successful!');
-              return { success: true, message: 'Phone number verified successfully' };
-            }
-          }
-        }
-      } catch (fileError) {
-        console.error('Error reading from file:', fileError);
-      }
-      
       return { success: false, message: 'No verification code found for this number' };
     }
 
     if (verification.expiresAt < new Date()) {
-      verificationCodes.delete(formattedPhone);
-      saveCodesToFile();
+      // Remove expired code
+      await VerificationCode.deleteOne({ phoneNumber: formattedPhone });
       return { success: false, message: 'Verification code has expired' };
     }
 
@@ -223,12 +213,9 @@ export async function verifyCode(phoneNumber: string, code: string): Promise<{ s
       return { success: false, message: 'Invalid verification code' };
     }
 
-    // Mark as verified
+    // Mark as verified and save
     verification.verified = true;
-    verificationCodes.set(formattedPhone, verification);
-    
-    // Save to file
-    saveCodesToFile();
+    await verification.save();
 
     return { success: true, message: 'Phone number verified successfully' };
 
