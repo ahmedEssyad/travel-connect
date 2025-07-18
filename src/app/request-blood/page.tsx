@@ -104,7 +104,9 @@ export default function RequestBloodPage() {
       if (response.ok) {
         const result = await response.json();
         toast.success(`${t('notifications.requestCreated')} ${result.notifiedDonors} ${t('notifications.donorsNotified')}.`);
-        router.push('/blood-requests');
+        
+        // Force refresh by adding timestamp parameter
+        router.push('/blood-requests?refresh=' + Date.now());
       } else {
         const error = await response.text();
         throw new Error(error || t('notifications.connectionFailed'));

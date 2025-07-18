@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useLocation } from '@/contexts/LocationContext';
@@ -40,6 +40,7 @@ interface BloodRequest {
 
 export default function BloodRequestsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const toast = useToast();
   const { location } = useLocation();
@@ -49,8 +50,22 @@ export default function BloodRequestsPage() {
   const [filter, setFilter] = useState<'all' | 'compatible' | 'mine'>('all');
 
   useEffect(() => {
+    const refreshParam = searchParams.get('refresh');
+    if (refreshParam) {
+      // Clear cache when refresh parameter is present
+      const locationStr = location ? `${location.lat}-${location.lng}` : 'no-location';
+      const cacheKey = `blood-requests-${locationStr}`;
+      localStorage.removeItem(cacheKey);
+      localStorage.removeItem(`${cacheKey}-time`);
+      
+      // Remove refresh parameter from URL
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('refresh');
+      router.replace('/blood-requests?' + newParams.toString(), { scroll: false });
+    }
+    
     fetchBloodRequests();
-  }, [location]);
+  }, [location, searchParams]);
 
   const fetchBloodRequests = async () => {
     try {

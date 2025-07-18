@@ -93,8 +93,18 @@ export default function EnhancedDonationWorkflow({ requestId, onStatusUpdate }: 
       if (response.ok) {
         const result = await response.json();
         toast.success(result.message);
+        
+        // Force immediate UI refresh
         await loadDonationStatus();
+        
+        // Trigger parent component refresh
         onStatusUpdate?.();
+        
+        // Additional refresh after a short delay to ensure data propagation
+        setTimeout(() => {
+          loadDonationStatus();
+          onStatusUpdate?.();
+        }, 1000);
         
         // Close forms after successful actions
         setShowScheduleForm(false);
