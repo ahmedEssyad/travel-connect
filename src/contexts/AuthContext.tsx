@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { User } from '@/types';
 import { apiClient } from '@/lib/api-client';
 
@@ -25,6 +26,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -125,8 +127,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Clear user state
       setUser(null);
+      
+      // Redirect to landing page
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
+      // Still redirect on error to ensure user is logged out
+      router.push('/');
     }
   };
 
