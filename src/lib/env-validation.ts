@@ -15,10 +15,6 @@ const envSchema = z.object({
   // Optional environment variables
   NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
   
-  // Firebase (optional for push notifications)
-  FIREBASE_PROJECT_ID: z.string().optional(),
-  FIREBASE_PRIVATE_KEY: z.string().optional(),
-  FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
 });
 
 export type Environment = z.infer<typeof envSchema>;
