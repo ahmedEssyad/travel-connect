@@ -50,14 +50,14 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 overflow-x-hidden m-0 p-0">
+    <div className={`landing-page min-h-screen ${isRTL ? 'rtl' : 'ltr'}`}>
       {/* PWA Install Prompt */}
       {showPWAPrompt && (
         <PWAInstallPrompt onClose={() => setShowPWAPrompt(false)} />
       )}
 
       {/* Header */}
-      <header className="relative overflow-hidden bg-white/80 backdrop-blur-md shadow-sm border-b border-red-100 sticky top-0 z-40">
+      <header className="landing-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-3">
@@ -81,8 +81,8 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section - Fixed spacing */}
-      <section className="relative pt-12 pb-12">
+      {/* Hero Section */}
+      <section className="landing-hero">
         {/* Background Elements */}
         <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-pink-50 to-white opacity-70"></div>
         <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-red-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
@@ -108,13 +108,13 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <button
               onClick={() => router.push('/signup')}
-              className="bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-lg transition-colors shadow-lg px-8 py-4 border-0 inline-flex items-center justify-center"
+              className="landing-button landing-button-primary"
             >
               {t('landing.getStarted')}
             </button>
             <button
               onClick={() => router.push('/login')}
-              className="bg-white text-red-600 hover:bg-red-50 rounded-lg font-semibold text-lg transition-colors border-2 border-red-600 px-8 py-4 inline-flex items-center justify-center"
+              className="landing-button landing-button-secondary"
             >
               {t('auth.login')}
             </button>
@@ -122,16 +122,16 @@ export default function LandingPage() {
 
           {/* Stats - Fixed spacing */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
-            <div className="bg-white/70 backdrop-blur-sm p-4 sm:p-6 lg:p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-100 group hover:scale-105">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600 mb-2 group-hover:text-red-700 transition-colors">24/7</div>
+            <div className="landing-stats-card">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600 mb-2">24/7</div>
               <div className="text-gray-600 font-medium text-sm sm:text-base">Emergency Support</div>
             </div>
-            <div className="bg-white/70 backdrop-blur-sm p-4 sm:p-6 lg:p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-100 group hover:scale-105">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600 mb-2 group-hover:text-red-700 transition-colors">&lt;5min</div>
+            <div className="landing-stats-card">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600 mb-2">&lt;5min</div>
               <div className="text-gray-600 font-medium text-sm sm:text-base">Response Time</div>
             </div>
-            <div className="bg-white/70 backdrop-blur-sm p-4 sm:p-6 lg:p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-100 group hover:scale-105">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600 mb-2 group-hover:text-red-700 transition-colors">100%</div>
+            <div className="landing-stats-card">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600 mb-2">100%</div>
               <div className="text-gray-600 font-medium text-sm sm:text-base">Secure</div>
             </div>
           </div>
@@ -155,7 +155,7 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <div 
                 key={index} 
-                className="group bg-white p-6 sm:p-8 rounded-2xl hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-red-200 relative overflow-hidden"
+                className="landing-feature-card"
               >
                 {/* Background gradient on hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-red-50/0 to-red-100/0 group-hover:from-red-50/50 group-hover:to-red-100/30 transition-all duration-500"></div>
@@ -180,8 +180,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA - Fixed spacing */}
-      <section className="bg-red-600">
+      {/* CTA */}
+      <section className="landing-cta">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 pt-16 pb-16">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-6">
@@ -193,13 +193,13 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
                 onClick={() => router.push('/signup')}
-                className="bg-white text-red-600 rounded-lg font-semibold hover:bg-red-50 transition-colors shadow-lg border-0 px-6 py-3 inline-flex items-center justify-center"
+                className="landing-button landing-button-secondary"
               >
                 {t('landing.getStarted')}
               </button>
               <button
                 onClick={() => setShowPWAPrompt(true)}
-                className="bg-red-500 text-white rounded-lg font-semibold hover:bg-red-400 transition-colors shadow-lg border-0 px-6 py-3 inline-flex items-center justify-center"
+                className="landing-button landing-button-primary"
               >
                 {t('landing.downloadApp')}
               </button>
@@ -209,7 +209,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white pt-8 pb-8">
+      <footer className="landing-footer">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
             <div className="bg-gradient-to-br from-red-600 to-red-700 p-2 sm:p-3 rounded-xl shadow-lg">
