@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api-client';
-import { formatTimeAgo } from '@/lib/notifications';
+import { formatTimeAgo } from '@/lib/time-utils';
 import useConnectionStatus from '@/hooks/useConnectionStatus';
 
 interface Notification {

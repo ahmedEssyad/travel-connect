@@ -2,7 +2,7 @@
  * Blood request notification helpers
  */
 
-import { sendSMS } from './sms-service';
+// Import sms-service dynamically to avoid client-side bundling issues
 
 /**
  * Notify pending donors that a blood request has been fulfilled
