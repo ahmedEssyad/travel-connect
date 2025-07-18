@@ -50,7 +50,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 overflow-x-hidden" style={{ margin: 0, padding: 0 }}>
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 overflow-x-hidden m-0 p-0">
       {/* PWA Install Prompt */}
       {showPWAPrompt && (
         <PWAInstallPrompt onClose={() => setShowPWAPrompt(false)} />
@@ -71,17 +71,7 @@ export default function LandingPage() {
             </div>
             <button
               onClick={() => setShowPWAPrompt(true)}
-              className="bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 border border-red-200 hover:border-red-300 text-sm font-medium"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                width: 'auto',
-                minHeight: 'auto'
-              }}
+              className="bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 border border-red-200 hover:border-red-300 text-sm font-medium flex items-center gap-2 px-4 py-2"
             >
               <Download className="h-4 w-4" />
               <span className="hidden sm:inline">{t('landing.installApp')}</span>
@@ -92,61 +82,39 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section - Fixed spacing */}
-      <section className="relative" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+      <section className="relative pt-12 pb-12">
         {/* Background Elements */}
         <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-pink-50 to-white opacity-70"></div>
         <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-red-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
         <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse delay-700"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div style={{ marginBottom: '2rem' }}>
+          <div className="mb-8">
             <div className="inline-flex items-center space-x-2 bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-medium mb-6 animate-fade-in">
               <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
               <span>{t('landing.realTimeAlerts')}</span>
             </div>
             
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight" style={{ marginBottom: '1.5rem' }}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
               {t('landing.title')}
             </h2>
             
-            <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed" style={{ marginBottom: '2rem' }}>
+            <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-8">
               {t('landing.subtitle')}
             </p>
           </div>
 
           {/* Action Buttons - Fixed spacing */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ marginBottom: '3rem' }}>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <button
               onClick={() => router.push('/signup')}
-              className="bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-lg transition-colors shadow-lg"
-              style={{ 
-                border: 'none',
-                padding: '1rem 2rem',
-                fontSize: '1.125rem',
-                fontWeight: '600',
-                width: 'auto',
-                minHeight: 'auto',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-lg transition-colors shadow-lg px-8 py-4 border-0 inline-flex items-center justify-center"
             >
               {t('landing.getStarted')}
             </button>
             <button
               onClick={() => router.push('/login')}
-              className="bg-white text-red-600 hover:bg-red-50 rounded-lg font-semibold text-lg transition-colors"
-              style={{ 
-                border: '2px solid #dc2626',
-                padding: '1rem 2rem',
-                fontSize: '1.125rem',
-                fontWeight: '600',
-                width: 'auto',
-                minHeight: 'auto',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              className="bg-white text-red-600 hover:bg-red-50 rounded-lg font-semibold text-lg transition-colors border-2 border-red-600 px-8 py-4 inline-flex items-center justify-center"
             >
               {t('auth.login')}
             </button>
@@ -171,11 +139,11 @@ export default function LandingPage() {
       </section>
 
       {/* Features - Fixed spacing */}
-      <section className="bg-white relative overflow-hidden" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+      <section className="bg-white relative overflow-hidden pt-12 pb-12">
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center" style={{ marginBottom: '3rem' }}>
-            <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900" style={{ marginBottom: '1rem' }}>
+          <div className="text-center mb-12">
+            <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
               {t('landing.fastMatching')}
             </h3>
             <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -214,46 +182,24 @@ export default function LandingPage() {
 
       {/* CTA - Fixed spacing */}
       <section className="bg-red-600">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8" style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 pt-16 pb-16">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl" style={{ marginBottom: '1.5rem' }}>
+            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-6">
               {t('landing.readyToSave')}
             </h2>
-            <p className="mx-auto max-w-xl text-lg leading-8 text-red-100" style={{ marginBottom: '2.5rem' }}>
+            <p className="mx-auto max-w-xl text-lg leading-8 text-red-100 mb-10">
               {t('landing.joinCommunity')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
                 onClick={() => router.push('/signup')}
-                className="bg-white text-red-600 rounded-lg font-semibold hover:bg-red-50 transition-colors shadow-lg"
-                style={{ 
-                  border: 'none',
-                  padding: '0.75rem 1.5rem',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  width: 'auto',
-                  minHeight: 'auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="bg-white text-red-600 rounded-lg font-semibold hover:bg-red-50 transition-colors shadow-lg border-0 px-6 py-3 inline-flex items-center justify-center"
               >
                 {t('landing.getStarted')}
               </button>
               <button
                 onClick={() => setShowPWAPrompt(true)}
-                className="bg-red-500 text-white rounded-lg font-semibold hover:bg-red-400 transition-colors shadow-lg"
-                style={{ 
-                  border: 'none',
-                  padding: '0.75rem 1.5rem',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  width: 'auto',
-                  minHeight: 'auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="bg-red-500 text-white rounded-lg font-semibold hover:bg-red-400 transition-colors shadow-lg border-0 px-6 py-3 inline-flex items-center justify-center"
               >
                 {t('landing.downloadApp')}
               </button>
@@ -263,9 +209,9 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white" style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
+      <footer className="bg-gray-900 text-white pt-8 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex items-center justify-center space-x-3" style={{ marginBottom: '1rem' }}>
+          <div className="flex items-center justify-center space-x-3 mb-4">
             <div className="bg-gradient-to-br from-red-600 to-red-700 p-2 sm:p-3 rounded-xl shadow-lg">
               <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
